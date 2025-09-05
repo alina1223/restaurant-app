@@ -1,18 +1,13 @@
 const express = require('express');
 const router = express.Router();
+const checkRole = require('../middlewares/auth');
+
 
 let { products } = require('../products/products');
 let { users } = require('../users/users');
 
 
-router.delete('/delete/product/:id', (req, res) => {
-    const id = parseInt(req.params.id);
-    products = products.filter(p => p.id !== id);
-    res.json({ message: `Produsul cu ID ${id} a fost șters` });
-});
-
-
-router.put('/edit/:id', (req, res) => {
+router.put('/edit/:id', checkRole('admin'), (req, res) => {
     const id = parseInt(req.params.id);
     const { name, price } = req.body;
 
@@ -26,10 +21,27 @@ router.put('/edit/:id', (req, res) => {
 });
 
 
-router.delete('/delete/user/:id', (req, res) => {
+router.delete('/delete/product/:id', checkRole('admin'), (req, res) => {
+    const id = parseInt(req.params.id);
+    products = products.filter(p => p.id !== id);
+    res.json({ message: `Produsul cu ID ${id} a fost șters` });
+});
+
+
+router.delete('/delete/user/:id', checkRole('admin'), (req, res) => {
     const id = parseInt(req.params.id);
     users = users.filter(u => u.id !== id);
     res.json({ message: `Userul cu ID ${id} a fost șters` });
 });
 
+
+router.get('/report/products', checkRole('admin'), (req, res) => {
+    res.json({ totalProducts: products.length, products });
+});
+
+router.get('/report/users', checkRole('admin'), (req, res) => {
+    res.json(users);
+});
+
 module.exports = router;
+
