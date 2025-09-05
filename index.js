@@ -3,9 +3,12 @@ const app = express();
 const PORT = 3000;
 
 
-const productRoutes = require('./products/products');
-const userRoutes = require('./users/users');
+const { router: productRoutes } = require('./products/products');
+const { router: userRoutes } = require('./users/users');
 const adminRoutes = require('./admin/admin');
+
+
+app.use(express.json());
 
 
 app.use('/products', productRoutes);

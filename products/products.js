@@ -1,8 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-
-const products = [
+let products = [
     { id: 1, name: 'Pizza Margherita', price: 250, description: 'Pizza clasică cu mozzarella și roșii' },
     { id: 2, name: 'Burger Clasic', price: 200, description: 'Burger cu carne, brânză și legume' },
     { id: 3, name: 'Salată Caesar', price: 180, description: 'Salată cu pui, crutoane și sos Caesar' },
@@ -28,30 +27,19 @@ router.get('/details/:id', (req, res) => {
     res.json(product);
 });
 
-module.exports = router;
+
 
 
 router.get('/search', (req, res) => {
-  const { name, minPrice, maxPrice } = req.query;
+    const { name, minPrice, maxPrice } = req.query;
+    let filteredProducts = products;
 
-  let filteredProducts = products;
+    if (name) filteredProducts = filteredProducts.filter(p => p.name.toLowerCase().includes(name.toLowerCase()));
+    if (minPrice) filteredProducts = filteredProducts.filter(p => p.price >= parseInt(minPrice));
+    if (maxPrice) filteredProducts = filteredProducts.filter(p => p.price <= parseInt(maxPrice));
 
-  
-  if (name) {
-    filteredProducts = filteredProducts.filter(p =>
-      p.name.toLowerCase().includes(name.toLowerCase())
-    );
-  }
-
-  
-  if (minPrice) {
-    filteredProducts = filteredProducts.filter(p => p.price >= parseInt(minPrice));
-  }
-
-  
-  if (maxPrice) {
-    filteredProducts = filteredProducts.filter(p => p.price <= parseInt(maxPrice));
-  }
-
-  res.json(filteredProducts);
+    res.json(filteredProducts);
 });
+
+module.exports = { router, products };
+
