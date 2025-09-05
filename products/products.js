@@ -29,3 +29,29 @@ router.get('/details/:id', (req, res) => {
 });
 
 module.exports = router;
+
+
+router.get('/search', (req, res) => {
+  const { name, minPrice, maxPrice } = req.query;
+
+  let filteredProducts = products;
+
+  
+  if (name) {
+    filteredProducts = filteredProducts.filter(p =>
+      p.name.toLowerCase().includes(name.toLowerCase())
+    );
+  }
+
+  
+  if (minPrice) {
+    filteredProducts = filteredProducts.filter(p => p.price >= parseInt(minPrice));
+  }
+
+  
+  if (maxPrice) {
+    filteredProducts = filteredProducts.filter(p => p.price <= parseInt(maxPrice));
+  }
+
+  res.json(filteredProducts);
+});
