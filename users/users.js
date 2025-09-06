@@ -35,8 +35,4 @@ router.put('/update/:id', (req, res) => {
 });
 
 
-router.get('/list', (req, res) => {
-    res.json(users);
-});
-
 module.exports = { router, users };
