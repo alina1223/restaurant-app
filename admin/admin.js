@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const checkRole = require('../middlewares/auth');
+const { usersUppercase } = require('../middlewares/uppercase');
 
 
 let { products } = require('../products/products');
@@ -41,6 +42,24 @@ router.get('/report/products', checkRole('admin'), (req, res) => {
 
 router.get('/report/users', checkRole('admin'), (req, res) => {
     res.json(users);
+});
+
+
+
+router.get('/search/users', checkRole('admin'), (req, res, next) => {
+  const { name } = req.query;
+  let filteredUsers = users;
+
+  if (name) {
+    filteredUsers = filteredUsers.filter(u =>
+      u.name.toLowerCase().includes(name.toLowerCase())
+    );
+  }
+
+  res.locals.users = filteredUsers;
+  next();
+}, usersUppercase, (req, res) => {
+  res.json(res.locals.users);
 });
 
 module.exports = router;
