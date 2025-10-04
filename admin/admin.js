@@ -7,6 +7,23 @@ const { usersUppercase } = require('../middlewares/uppercase');
 let { products } = require('../products/products');
 let { users } = require('../users/users');
 
+router.post('/create/product', checkRole('admin'), (req, res) => {
+  const { name, price, description } = req.body;
+
+  if (!name || !price) {
+    return res.status(400).json({ message: 'Numele și prețul sunt obligatorii' });
+  }
+
+  const newProduct = {
+    id: products.length + 1,
+    name,
+    price,
+    description: description || ''
+  };
+
+  products.push(newProduct);
+  res.json({ message: 'Produs adăugat cu succes', product: newProduct });
+});
 
 router.put('/edit/:id', checkRole('admin'), (req, res) => {
     const id = parseInt(req.params.id);
@@ -20,6 +37,22 @@ router.put('/edit/:id', checkRole('admin'), (req, res) => {
 
     res.json({ message: 'Produs actualizat', product });
 });
+
+
+router.patch('/update/:id', checkRole('admin'), (req, res) => {
+  const id = parseInt(req.params.id);
+  const { name, price, description } = req.body;
+
+  const product = products.find(p => p.id === id);
+  if (!product) return res.status(404).json({ message: 'Produsul nu există' });
+
+  if (name) product.name = name;
+  if (price) product.price = price;
+  if (description) product.description = description;
+
+  res.json({ message: 'Produs actualizat parțial', product });
+});
+
 
 
 router.delete('/delete/product/:id', checkRole('admin'), (req, res) => {
