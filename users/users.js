@@ -53,8 +53,19 @@ router.patch('/update/:id', updateUserValidator, validateRoleBody, (req, res) =>
 
 router.delete('/delete/:id', (req, res) => {
   const id = parseInt(req.params.id);
+  const headerRole = req.headers['role'];
+  const currentUserId = parseInt(req.headers['currentuserid']); // id-ul persoanei care cere ștergerea
+
+  const user = users.find(u => u.id === id);
+  if (!user) return res.status(404).json({ message: 'Userul nu există' });
+
+  if (headerRole === 'user' && id !== currentUserId) {
+    return res.status(403).json({ message: 'Nu aveți dreptul să ștergeți acest cont' });
+  }
+
   users = users.filter(u => u.id !== id);
   res.json({ message: `Userul cu ID ${id} a fost șters` });
 });
+
 
 module.exports = { router, users };
