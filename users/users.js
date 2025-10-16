@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { validationResult } = require('express-validator');
+const { validationResult, param } = require('express-validator');
 
 const createUserValidator = require('./dto/create-user.dto');
 const updateUserValidator = require('./dto/update-user.dto');
@@ -10,6 +10,7 @@ let users = [
   { id: 1, name: 'Alina', email: 'alina@email.com', phone: '0711111111', age: 25, role: 'user' },
   { id: 2, name: 'Octavian', email: 'octavian@email.com', phone: '0722222222', age: 30, role: 'manager', department: 'Sales' }
 ];
+
 
 
 router.post('/create', createUserValidator, validateRoleBody, (req, res) => {
@@ -23,49 +24,85 @@ router.post('/create', createUserValidator, validateRoleBody, (req, res) => {
 });
 
 
-router.put('/edit/:id', updateUserValidator, validateRoleBody, (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty())
-    return res.status(400).json({ message: 'Validare eșuată', errors: errors.array() });
 
-  const id = parseInt(req.params.id);
-  const user = users.find(u => u.id === id);
-  if (!user) return res.status(404).json({ message: 'Userul nu există' });
+router.put(
+  '/edit/:id',
+  [
+    param('id')
+      .isInt({ min: 1 })
+      .withMessage('ID-ul trebuie să fie un număr valid mai mare decât 0'),
+  ],
+  updateUserValidator,
+  validateRoleBody,
+  (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty())
+      return res.status(400).json({ message: 'Validare eșuată', errors: errors.array() });
 
-  Object.assign(user, req.body);
-  res.json({ message: 'User actualizat', user });
-});
+    const id = parseInt(req.params.id);
+    const user = users.find(u => u.id === id);
+    if (!user) return res.status(404).json({ message: 'Userul nu există' });
 
-
-router.patch('/update/:id', updateUserValidator, validateRoleBody, (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty())
-    return res.status(400).json({ message: 'Validare eșuată', errors: errors.array() });
-
-  const id = parseInt(req.params.id);
-  const user = users.find(u => u.id === id);
-  if (!user) return res.status(404).json({ message: 'Userul nu există' });
-
-  Object.assign(user, req.body);
-  res.json({ message: 'User actualizat parțial', user });
-});
-
-
-router.delete('/delete/:id', (req, res) => {
-  const id = parseInt(req.params.id);
-  const headerRole = req.headers['role'];
-  const currentUserId = parseInt(req.headers['currentuserid']); // id-ul persoanei care cere ștergerea
-
-  const user = users.find(u => u.id === id);
-  if (!user) return res.status(404).json({ message: 'Userul nu există' });
-
-  if (headerRole === 'user' && id !== currentUserId) {
-    return res.status(403).json({ message: 'Nu aveți dreptul să ștergeți acest cont' });
+    Object.assign(user, req.body);
+    res.json({ message: 'User actualizat', user });
   }
+);
 
-  users = users.filter(u => u.id !== id);
-  res.json({ message: `Userul cu ID ${id} a fost șters` });
-});
+
+
+router.patch(
+  '/update/:id',
+  [
+    param('id')
+      .isInt({ min: 1 })
+      .withMessage('ID-ul trebuie să fie un număr valid mai mare decât 0'),
+  ],
+  updateUserValidator,
+  validateRoleBody,
+  (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty())
+      return res.status(400).json({ message: 'Validare eșuată', errors: errors.array() });
+
+    const id = parseInt(req.params.id);
+    const user = users.find(u => u.id === id);
+    if (!user) return res.status(404).json({ message: 'Userul nu există' });
+
+    Object.assign(user, req.body);
+    res.json({ message: 'User actualizat parțial', user });
+  }
+);
+
+
+
+router.delete(
+  '/delete/:id',
+  [
+    param('id')
+      .isInt({ min: 1 })
+      .withMessage('ID-ul trebuie să fie un număr valid mai mare decât 0'),
+  ],
+  (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ message: 'Bad Request', errors: errors.array() });
+    }
+
+    const id = parseInt(req.params.id);
+    const headerRole = req.headers['role'];
+    const currentUserId = parseInt(req.headers['currentuserid']); 
+
+    const user = users.find(u => u.id === id);
+    if (!user) return res.status(404).json({ message: 'Userul nu există' });
+
+    if (headerRole === 'user' && id !== currentUserId) {
+      return res.status(403).json({ message: 'Nu aveți dreptul să ștergeți acest cont' });
+    }
+
+    users = users.filter(u => u.id !== id);
+    res.json({ message: `Userul cu ID ${id} a fost șters` });
+  }
+);
 
 
 module.exports = { router, users };
