@@ -38,7 +38,6 @@ router.get(
   }
 );
 
-
 router.get(
   '/search',
   [

@@ -1,0 +1,14 @@
+[33m6493c50[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m querry si parms
+[33mad510d2[m querry si parms
+[33m5fb56e6[m querry si parms
+[33mf895fbd[m DTO
+[33meea2efa[m DTO
+[33m0f0ace9[m Adaugarea la toate metodele
+[33m936f0c5[m Sarcina 2: Pipe-uri pentru produse si useri, cautare dupa nume
+[33m4fb8ae0[m Mica schimbare
+[33m8a57cc5[m Nivel 10: Middleware pentru roluri
+[33m7e573c4[m Nivel 9: Separare Admin/Public
+[33mf0faddb[m Nivel 8: Endpoint /search cu query params (name, minPrice, maxPrice)
+[33m5a0aec7[m Nivel 7: Modularizare pe module (products, admin, users)
+[33m4878d4e[m Nivel 6: Endpoint GET /details/:id cu 404 pentru id invalid
+[33m57c891e[m Nivel 5: Endpoint GET /list cu 10 produse

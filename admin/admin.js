@@ -13,6 +13,8 @@ const updateUserDto = require('../users/dto/update-user.dto');
 let { products } = require('../products/products');
 let { users } = require('../users/users');
 
+
+
 router.post(
   '/create/product',
   checkRole('admin'),
@@ -43,7 +45,6 @@ router.post(
 );
 
 
-
 router.put(
   '/edit/:id',
   checkRole('admin'),
@@ -70,6 +71,7 @@ router.put(
     res.json({ message: 'Produs actualizat', product });
   }
 );
+
 
 
 router.patch(
@@ -153,9 +155,11 @@ router.get('/report/products', checkRole('admin'), (req, res) => {
 });
 
 
+
 router.get('/report/users', checkRole('admin'), (req, res) => {
   res.json(users);
 });
+
 
 
 router.get(

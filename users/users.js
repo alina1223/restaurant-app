@@ -12,7 +12,6 @@ let users = [
 ];
 
 
-
 router.post('/create', createUserValidator, validateRoleBody, (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty())
@@ -22,7 +21,6 @@ router.post('/create', createUserValidator, validateRoleBody, (req, res) => {
   users.push(newUser);
   res.json({ message: 'Cont creat cu succes', user: newUser });
 });
-
 
 
 router.put(
@@ -49,7 +47,6 @@ router.put(
 );
 
 
-
 router.patch(
   '/update/:id',
   [
@@ -72,7 +69,6 @@ router.patch(
     res.json({ message: 'User actualizat parțial', user });
   }
 );
-
 
 
 router.delete(
