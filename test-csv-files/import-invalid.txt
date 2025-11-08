@@ -1,0 +1,4 @@
+Acesta este un fisier text invalid
+Nu are format CSV corect
+Nume, Pret, Descriere
+Produs Test, 100, Descriere test

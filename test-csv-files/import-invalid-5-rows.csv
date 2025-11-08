@@ -1,0 +1,6 @@
+name,price,description,stock,category
+Pizza Prosciutto,280,Pizza cu sunca si ciuperci,22,Pizza
+Suc Portocale,-25,Pret negativ - INVALID,40,Băutură
+Salata Greceasca,160,,35,Salată
+Burger Vegetarian,190,Burger cu legume si halloumi,12,Burger
+Cappuccino,,Bautura fara pret - INVALID,60,Băutură
