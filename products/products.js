@@ -5,7 +5,7 @@ const router = express.Router();
 const { productsUppercase } = require('../middlewares/uppercase');
 const Product = require('../models/Product');
 
-// ✅ LIST PRODUCTS - CURAT
+
 router.get('/list', async (req, res) => {
   try {
     const products = await Product.findAll({
@@ -21,7 +21,7 @@ router.get('/list', async (req, res) => {
   }
 });
 
-// ✅ PRODUCT DETAILS - CURAT
+
 router.get(
   '/details/:id',
   [
@@ -54,7 +54,7 @@ router.get(
   }
 );
 
-// ✅ SEARCH PRODUCTS - CURAT
+
 router.get(
   '/search',
   [

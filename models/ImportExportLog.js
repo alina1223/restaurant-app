@@ -13,12 +13,12 @@ const ImportExportLog = sequelize.define('ImportExportLog', {
   },
   filename: {
     type: DataTypes.STRING,
-    allowNull: true // ✅ Schimbă în true dacă vrei opțional
+    allowNull: true 
   },
   recordsProcessed: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    defaultValue: 0 // ✅ Adaugă default value
+    defaultValue: 0 
   },
   recordsSuccessful: {
     type: DataTypes.INTEGER,

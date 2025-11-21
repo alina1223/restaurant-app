@@ -9,7 +9,7 @@ const validateRoleBody = require('../middlewares/validateRoleBody');
 
 const User = require('../models/User');
 
-// ✅ CREATE USER - CURAT
+
 router.post('/create', createUserValidator, validateRoleBody, async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty())
@@ -17,8 +17,6 @@ router.post('/create', createUserValidator, validateRoleBody, async (req, res) =
 
   try {
     const newUser = await User.create(req.body);
-
-    // ✅ Returnează doar datele curate
     const cleanUser = {
       id: newUser.id,
       name: newUser.name,
@@ -38,7 +36,7 @@ router.post('/create', createUserValidator, validateRoleBody, async (req, res) =
   }
 });
 
-// ✅ EDIT USER - CURAT
+
 router.put(
   '/edit/:id',
   [
@@ -60,7 +58,7 @@ router.put(
 
       await user.update(req.body);
 
-      // ✅ Reîncarcă userul pentru a obține datele actualizate curate
+    
       const updatedUser = await User.findByPk(id, {
         attributes: ['id', 'name', 'email', 'phone', 'age', 'role', 'department'],
         raw: true
@@ -76,7 +74,6 @@ router.put(
   }
 );
 
-// ✅ UPDATE USER - CURAT
 router.patch(
   '/update/:id',
   [
@@ -97,8 +94,6 @@ router.patch(
       if (!user) return res.status(404).json({ message: 'Userul nu există' });
 
       await user.update(req.body);
-
-      // ✅ Reîncarcă userul pentru a obține datele actualizate curate
       const updatedUser = await User.findByPk(id, {
         attributes: ['id', 'name', 'email', 'phone', 'age', 'role', 'department'],
         raw: true
@@ -114,7 +109,7 @@ router.patch(
   }
 );
 
-// ✅ DELETE USER
+
 router.delete(
   '/delete/:id',
   [

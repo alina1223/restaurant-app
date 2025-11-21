@@ -6,10 +6,10 @@ const ImportExportLog = require('../models/ImportExportLog');
 async function initializeDatabase() {
   try {
     await sequelize.authenticate();
-    console.log('✅ Conexiune la baza de date reușită');
+    console.log('Conexiune la baza de date reușită');
     
     await sequelize.sync({ force: true });
-    console.log('✅ Tabele create');
+    console.log('Tabele create');
 
     
     await User.bulkCreate([
@@ -28,11 +28,11 @@ async function initializeDatabase() {
       { name: 'Tiramisu', price: 120, description: 'Desert italian cu mascarpone', stock: 30, category: 'Desert' }
     ]);
 
-    console.log('✅ Date demo inserate');
-    console.log('🎉 Baza de date pregătită!');
+    console.log('Date demo inserate');
+    console.log('Baza de date pregătită!');
     
   } catch (error) {
-    console.error('❌ Eroare la inițializarea bazei de date:', error);
+    console.error('Eroare la inițializarea bazei de date:', error);
   }
 }
 
