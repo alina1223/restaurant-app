@@ -1,28 +1,44 @@
 const express = require('express');
 const router = express.Router();
 const { validationResult, param } = require('express-validator');
+const { Op } = require('sequelize');
 
 const createUserValidator = require('./dto/create-user.dto');
 const updateUserValidator = require('./dto/update-user.dto');
 const validateRoleBody = require('../middlewares/validateRoleBody');
 
-let users = [
-  { id: 1, name: 'Alina', email: 'alina@email.com', phone: '0711111111', age: 25, role: 'user' },
-  { id: 2, name: 'Octavian', email: 'octavian@email.com', phone: '0722222222', age: 30, role: 'manager', department: 'Sales' }
-];
+const User = require('../models/User');
 
-
-router.post('/create', createUserValidator, validateRoleBody, (req, res) => {
+// ✅ CREATE USER - CURAT
+router.post('/create', createUserValidator, validateRoleBody, async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty())
     return res.status(400).json({ message: 'Validare eșuată', errors: errors.array() });
 
-  const newUser = { id: users.length + 1, ...req.body };
-  users.push(newUser);
-  res.json({ message: 'Cont creat cu succes', user: newUser });
+  try {
+    const newUser = await User.create(req.body);
+
+    // ✅ Returnează doar datele curate
+    const cleanUser = {
+      id: newUser.id,
+      name: newUser.name,
+      email: newUser.email,
+      phone: newUser.phone,
+      age: newUser.age,
+      role: newUser.role,
+      department: newUser.department
+    };
+
+    res.json({ message: 'Cont creat cu succes', user: cleanUser });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Eroare la crearea userului',
+      error: error.message
+    });
+  }
 });
 
-
+// ✅ EDIT USER - CURAT
 router.put(
   '/edit/:id',
   [
@@ -32,21 +48,35 @@ router.put(
   ],
   updateUserValidator,
   validateRoleBody,
-  (req, res) => {
+  async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty())
       return res.status(400).json({ message: 'Validare eșuată', errors: errors.array() });
 
-    const id = parseInt(req.params.id);
-    const user = users.find(u => u.id === id);
-    if (!user) return res.status(404).json({ message: 'Userul nu există' });
+    try {
+      const id = parseInt(req.params.id);
+      const user = await User.findByPk(id);
+      if (!user) return res.status(404).json({ message: 'Userul nu există' });
 
-    Object.assign(user, req.body);
-    res.json({ message: 'User actualizat', user });
+      await user.update(req.body);
+
+      // ✅ Reîncarcă userul pentru a obține datele actualizate curate
+      const updatedUser = await User.findByPk(id, {
+        attributes: ['id', 'name', 'email', 'phone', 'age', 'role', 'department'],
+        raw: true
+      });
+
+      res.json({ message: 'User actualizat', user: updatedUser });
+    } catch (error) {
+      res.status(500).json({
+        message: 'Eroare la actualizarea userului',
+        error: error.message
+      });
+    }
   }
 );
 
-
+// ✅ UPDATE USER - CURAT
 router.patch(
   '/update/:id',
   [
@@ -56,21 +86,35 @@ router.patch(
   ],
   updateUserValidator,
   validateRoleBody,
-  (req, res) => {
+  async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty())
       return res.status(400).json({ message: 'Validare eșuată', errors: errors.array() });
 
-    const id = parseInt(req.params.id);
-    const user = users.find(u => u.id === id);
-    if (!user) return res.status(404).json({ message: 'Userul nu există' });
+    try {
+      const id = parseInt(req.params.id);
+      const user = await User.findByPk(id);
+      if (!user) return res.status(404).json({ message: 'Userul nu există' });
 
-    Object.assign(user, req.body);
-    res.json({ message: 'User actualizat parțial', user });
+      await user.update(req.body);
+
+      // ✅ Reîncarcă userul pentru a obține datele actualizate curate
+      const updatedUser = await User.findByPk(id, {
+        attributes: ['id', 'name', 'email', 'phone', 'age', 'role', 'department'],
+        raw: true
+      });
+
+      res.json({ message: 'User actualizat parțial', user: updatedUser });
+    } catch (error) {
+      res.status(500).json({
+        message: 'Eroare la actualizarea userului',
+        error: error.message
+      });
+    }
   }
 );
 
-
+// ✅ DELETE USER
 router.delete(
   '/delete/:id',
   [
@@ -78,27 +122,33 @@ router.delete(
       .isInt({ min: 1 })
       .withMessage('ID-ul trebuie să fie un număr valid mai mare decât 0'),
   ],
-  (req, res) => {
+  async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ message: 'Bad Request', errors: errors.array() });
     }
 
-    const id = parseInt(req.params.id);
-    const headerRole = req.headers['role'];
-    const currentUserId = parseInt(req.headers['currentuserid']); 
+    try {
+      const id = parseInt(req.params.id);
+      const headerRole = req.headers['role'];
+      const currentUserId = parseInt(req.headers['currentuserid']); 
 
-    const user = users.find(u => u.id === id);
-    if (!user) return res.status(404).json({ message: 'Userul nu există' });
+      const user = await User.findByPk(id);
+      if (!user) return res.status(404).json({ message: 'Userul nu există' });
 
-    if (headerRole === 'user' && id !== currentUserId) {
-      return res.status(403).json({ message: 'Nu aveți dreptul să ștergeți acest cont' });
+      if (headerRole === 'user' && id !== currentUserId) {
+        return res.status(403).json({ message: 'Nu aveți dreptul să ștergeți acest cont' });
+      }
+
+      await user.destroy();
+      res.json({ message: `Userul cu ID ${id} a fost șters` });
+    } catch (error) {
+      res.status(500).json({
+        message: 'Eroare la ștergerea userului',
+        error: error.message
+      });
     }
-
-    users = users.filter(u => u.id !== id);
-    res.json({ message: `Userul cu ID ${id} a fost șters` });
   }
 );
 
-
-module.exports = { router, users };
+module.exports = { router };

@@ -1,8 +1,9 @@
 const express = require('express');
 const { validationResult, param, query } = require('express-validator');
+const { Op } = require('sequelize');
 const router = express.Router();
 const multer = require('multer');
-
+const sequelize = require('../config/database');
 const checkRole = require('../middlewares/auth');
 const { usersUppercase } = require('../middlewares/uppercase');
 const FileValidationPipe = require('../middlewares/file-validation.pipe');
@@ -12,20 +13,19 @@ const createProductDto = require('../products/dto/create-product.dto');
 const updateProductDto = require('../products/dto/update-product.dto');
 const createUserDto = require('../users/dto/create-user.dto');
 const updateUserDto = require('../users/dto/update-user.dto');
-const exportProductsDto = require('../products/dto/export-products.dto'); // ✅ DTO NOU
+const exportProductsDto = require('../products/dto/export-products.dto');
 
-let { products } = require('../products/products');
-let { users } = require('../users/users');
+const Product = require('../models/Product');
+const User = require('../models/User');
+const ImportExportLog = require('../models/ImportExportLog');
 
-// Configurare multer pentru upload
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 2 * 1024 * 1024 // 2MB
+    fileSize: 2 * 1024 * 1024
   }
 });
 
-// ✅ MIDDLEWARE PENTRU GESTIONARE ERORI MULTER
 const handleMulterErrors = (error, req, res, next) => {
   if (error instanceof multer.MulterError) {
     if (error.code === 'LIMIT_FILE_SIZE') {
@@ -38,36 +38,30 @@ const handleMulterErrors = (error, req, res, next) => {
   next(error);
 };
 
-// Endpoint Import CSV
+
 router.post(
   '/products/import',
   checkRole('admin'),
   upload.single('file'),
   handleMulterErrors,
-  (req, res) => {
+  async (req, res) => {
     try {
       FileValidationPipe.validateCSV(req.file);
-      processImport(req.file.buffer)
-        .then(result => {
-          res.json({
-            message: 'Import finalizat',
-            summary: {
-              totalRows: result.totalRows,
-              successfullyImported: result.successfullyImported,
-              failed: result.failed
-            },
-            details: {
-              importedProducts: result.importedProducts,
-              errors: result.errors
-            }
-          });
-        })
-        .catch(error => {
-          res.status(400).json({
-            message: 'Eroare la procesarea fișierului',
-            error: error.message
-          });
-        });
+      const result = await processImport(req.file.buffer);
+      
+      res.json({
+        message: 'Import finalizat',
+        summary: {
+          totalRows: result.totalRows,
+          successfullyImported: result.successfullyImported,
+          failed: result.failed
+        },
+        details: {
+          importedProducts: result.importedProducts,
+          errors: result.errors
+        }
+      });
+
     } catch (error) {
       res.status(400).json({
         message: 'Validare fișier eșuată',
@@ -81,20 +75,45 @@ async function processImport(buffer) {
   const productData = await CSVProcessorService.parseCSV(buffer);
   const { validatedProducts, errors } = await CSVProcessorService.validateProductData(productData);
 
-  const maxId = products.length > 0 ? Math.max(...products.map(p => p.id)) : 0;
-  
   const importedProducts = [];
-  validatedProducts.forEach((productData, index) => {
-    const newProduct = {
-      id: maxId + index + 1,
-      name: productData.name,
-      price: productData.price,
-      description: productData.description,
-      stock: productData.stock,
-      category: productData.category
-    };
-    products.push(newProduct);
-    importedProducts.push(newProduct);
+  
+  for (const productData of validatedProducts) {
+    try {
+      const newProduct = await Product.create({
+        name: productData.name,
+        price: productData.price,
+        description: productData.description,
+        stock: productData.stock,
+        category: productData.category
+      });
+
+      
+      const cleanProduct = {
+        id: newProduct.id,
+        name: newProduct.name,
+        price: newProduct.price,
+        description: newProduct.description,
+        stock: newProduct.stock,
+        category: newProduct.category
+      };
+      
+      importedProducts.push(cleanProduct);
+    } catch (error) {
+      errors.push({
+        row: 'DB Error',
+        error: `Eroare la salvarea în baza de date: ${error.message}`,
+        data: productData
+      });
+    }
+  }
+
+  await ImportExportLog.create({
+    type: 'import',
+    filename: 'import.csv',
+    recordsProcessed: productData.length,
+    recordsSuccessful: importedProducts.length,
+    recordsFailed: errors.length,
+    details: JSON.stringify({ errors })
   });
 
   return {
@@ -106,12 +125,11 @@ async function processImport(buffer) {
   };
 }
 
-// ✅ ENDPOINT EXPORT CSV CU DTO NOU
 router.get(
   '/products/export',
   checkRole('admin'),
-  exportProductsDto, // ✅ FOLOSEȘTE DOAR DTO-UL, FĂRĂ VALIDĂRI DUPLICATE
-  (req, res) => {
+  exportProductsDto,
+  async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -122,59 +140,51 @@ router.get(
 
     const { name, minPrice, maxPrice, category, minStock } = req.query;
     
-    console.log('🔍 Filtre aplicate:', { name, minPrice, maxPrice, category, minStock });
-    let filteredProducts = [...products];
-
-    // ✅ APLICĂ FILTRELE
+    const whereConditions = {};
+    
     if (name) {
-      filteredProducts = filteredProducts.filter(p => 
-        p.name.toLowerCase().includes(name.toLowerCase())
-      );
-      console.log(`📝 Filtru nume: ${filteredProducts.length} produse rămase`);
+      whereConditions.name = { [Op.iLike]: `%${name}%` };
     }
-
-    if (minPrice) {
-      filteredProducts = filteredProducts.filter(p => 
-        p.price >= parseFloat(minPrice)
-      );
-      console.log(`💰 Filtru preț minim ${minPrice}: ${filteredProducts.length} produse`);
-    }
-
-    if (maxPrice) {
-      filteredProducts = filteredProducts.filter(p => 
-        p.price <= parseFloat(maxPrice)
-      );
-      console.log(`💰 Filtru preț maxim ${maxPrice}: ${filteredProducts.length} produse`);
-    }
-
+    
     if (category) {
-      filteredProducts = filteredProducts.filter(p => 
-        p.category.toLowerCase() === category.toLowerCase()
-      );
-      console.log(`🏷️  Filtru categorie ${category}: ${filteredProducts.length} produse`);
+      whereConditions.category = category;
     }
-
+    
+    if (minPrice || maxPrice) {
+      whereConditions.price = {};
+      if (minPrice) whereConditions.price[Op.gte] = parseFloat(minPrice);
+      if (maxPrice) whereConditions.price[Op.lte] = parseFloat(maxPrice);
+    }
+    
     if (minStock) {
-      filteredProducts = filteredProducts.filter(p => 
-        p.stock >= parseInt(minStock)
-      );
-      console.log(`📦 Filtru stoc minim ${minStock}: ${filteredProducts.length} produse`);
+      whereConditions.stock = { [Op.gte]: parseInt(minStock) };
     }
 
-    // ✅ GENEREAZĂ CSV CU TOATE CÂMPURILE
+    const filteredProducts = await Product.findAll({
+      where: whereConditions,
+      attributes: ['id', 'name', 'price', 'description', 'stock', 'category'],
+      raw: true
+    });
+
+    await ImportExportLog.create({
+      type: 'export',
+      filename: `export-${Date.now()}.csv`,
+      recordsProcessed: filteredProducts.length,
+      recordsSuccessful: filteredProducts.length,
+      recordsFailed: 0,
+      filters: req.query,
+      details: `Export realizat cu ${filteredProducts.length} produse`
+    });
+
     const csvContent = generateExportCSV(filteredProducts);
 
-    // ✅ SETEAZĂ HEADERS PENTRU DOWNLOAD
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename=produse-export-${Date.now()}.csv`);
-    res.setHeader('X-Export-Info', `Produse: ${filteredProducts.length}, Filtre: ${Object.keys(req.query).length}`);
     
-    console.log(`📤 Export final: ${filteredProducts.length} produse`);
     res.send(csvContent);
   }
 );
 
-// ✅ FUNCȚIE PENTRU GENERARE CSV CU TOATE CÂMPURILE
 function generateExportCSV(products) {
   const headers = ['id', 'name', 'price', 'description', 'stock', 'category'];
   let csvContent = headers.join(',') + '\n';
@@ -183,7 +193,7 @@ function generateExportCSV(products) {
     const row = headers.map(header => {
       let value = product[header];
       
-      if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+      if (typeof value === 'string') {
         value = `"${value.replace(/"/g, '""')}"`;
       }
       
@@ -201,7 +211,7 @@ router.post(
   '/create/product',
   checkRole('admin'),
   createProductDto,
-  (req, res) => {
+  async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -210,19 +220,34 @@ router.post(
       });
     }
 
-    const { name, price, description, stock, category } = req.body;
+    try {
+      const { name, price, description, stock, category } = req.body;
 
-    const newProduct = {
-      id: products.length + 1,
-      name,
-      price,
-      description,
-      stock,
-      category,
-    };
+      const newProduct = await Product.create({
+        name,
+        price,
+        description,
+        stock,
+        category,
+      });
 
-    products.push(newProduct);
-    res.json({ message: 'Produs adăugat cu succes', product: newProduct });
+      
+      const cleanProduct = {
+        id: newProduct.id,
+        name: newProduct.name,
+        price: newProduct.price,
+        description: newProduct.description,
+        stock: newProduct.stock,
+        category: newProduct.category
+      };
+
+      res.json({ message: 'Produs adăugat cu succes', product: cleanProduct });
+    } catch (error) {
+      res.status(500).json({
+        message: 'Eroare la crearea produsului',
+        error: error.message
+      });
+    }
   }
 );
 
@@ -236,7 +261,7 @@ router.put(
       .withMessage('ID-ul trebuie să fie un număr valid mai mare decât 0'),
   ],
   updateProductDto,
-  (req, res) => {
+  async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -245,15 +270,29 @@ router.put(
       });
     }
 
-    const id = parseInt(req.params.id);
-    const product = products.find(p => p.id === id);
-    if (!product) return res.status(404).json({ message: 'Produsul nu există' });
+    try {
+      const id = parseInt(req.params.id);
+      const product = await Product.findByPk(id);
+      
+      if (!product) return res.status(404).json({ message: 'Produsul nu există' });
 
-    Object.assign(product, req.body);
-    res.json({ message: 'Produs actualizat', product });
+      await product.update(req.body);
+
+      
+      const updatedProduct = await Product.findByPk(id, {
+        attributes: ['id', 'name', 'price', 'description', 'stock', 'category'],
+        raw: true
+      });
+      
+      res.json({ message: 'Produs actualizat', product: updatedProduct });
+    } catch (error) {
+      res.status(500).json({
+        message: 'Eroare la actualizarea produsului',
+        error: error.message
+      });
+    }
   }
 );
-
 
 
 router.patch(
@@ -265,7 +304,7 @@ router.patch(
       .withMessage('ID-ul trebuie să fie un număr valid mai mare decât 0'),
   ],
   updateProductDto,
-  (req, res) => {
+  async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -274,12 +313,26 @@ router.patch(
       });
     }
 
-    const id = parseInt(req.params.id);
-    const product = products.find(p => p.id === id);
-    if (!product) return res.status(404).json({ message: 'Produsul nu există' });
+    try {
+      const id = parseInt(req.params.id);
+      const product = await Product.findByPk(id);
+      
+      if (!product) return res.status(404).json({ message: 'Produsul nu există' });
 
-    Object.assign(product, req.body);
-    res.json({ message: 'Produs actualizat parțial', product });
+      await product.update(req.body);
+
+      const updatedProduct = await Product.findByPk(id, {
+        attributes: ['id', 'name', 'price', 'description', 'stock', 'category'],
+        raw: true
+      });
+      
+      res.json({ message: 'Produs actualizat parțial', product: updatedProduct });
+    } catch (error) {
+      res.status(500).json({
+        message: 'Eroare la actualizarea produsului',
+        error: error.message
+      });
+    }
   }
 );
 
@@ -292,20 +345,49 @@ router.delete(
       .isInt({ min: 1 })
       .withMessage('ID-ul trebuie să fie un număr valid mai mare decât 0'),
   ],
-  (req, res) => {
+  async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ message: 'Bad Request', errors: errors.array() });
     }
 
-    const id = parseInt(req.params.id);
-    const existing = products.find(p => p.id === id);
-    if (!existing) return res.status(404).json({ message: 'Produsul nu există' });
+    try {
+      const id = parseInt(req.params.id);
+      const product = await Product.findByPk(id);
+      
+      if (!product) return res.status(404).json({ message: 'Produsul nu există' });
 
-    products = products.filter(p => p.id !== id);
-    res.json({ message: `Produsul cu ID ${id} a fost șters` });
+      await product.destroy();
+      await sequelize.query(
+        "SELECT setval('products_id_seq', (SELECT COALESCE(MAX(id), 0) FROM products))"
+      );
+      res.json({ message: `Produsul cu ID ${id} a fost șters` });
+    } catch (error) {
+      res.status(500).json({
+        message: 'Eroare la ștergerea produsului',
+        error: error.message
+      });
+    }
   }
 );
+
+
+router.get('/report/products', checkRole('admin'), async (req, res) => {
+  try {
+    const products = await Product.findAll({
+      attributes: ['id', 'name', 'price', 'description', 'stock', 'category'],
+      raw: true
+    });
+    const totalProducts = await Product.count();
+    
+    res.json({ totalProducts, products });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Eroare la obținerea raportului',
+      error: error.message
+    });
+  }
+});
 
 
 router.delete(
@@ -316,32 +398,47 @@ router.delete(
       .isInt({ min: 1 })
       .withMessage('ID-ul trebuie să fie un număr valid mai mare decât 0'),
   ],
-  (req, res) => {
+  async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ message: 'Bad Request', errors: errors.array() });
     }
 
-    const id = parseInt(req.params.id);
-    const existing = users.find(u => u.id === id);
-    if (!existing) return res.status(404).json({ message: 'Userul nu există' });
+    try {
+      const id = parseInt(req.params.id);
+      const user = await User.findByPk(id);
+      
+      if (!user) return res.status(404).json({ message: 'Userul nu există' });
 
-    users = users.filter(u => u.id !== id);
-    res.json({ message: `Userul cu ID ${id} a fost șters` });
+      await user.destroy();
+       await sequelize.query(
+        "SELECT setval('products_id_seq', (SELECT COALESCE(MAX(id), 0) FROM products))"
+      );
+      res.json({ message: `Userul cu ID ${id} a fost șters` });
+    } catch (error) {
+      res.status(500).json({
+        message: 'Eroare la ștergerea userului',
+        error: error.message
+      });
+    }
   }
 );
 
 
-router.get('/report/products', checkRole('admin'), (req, res) => {
-  res.json({ totalProducts: products.length, products });
+router.get('/report/users', checkRole('admin'), async (req, res) => {
+  try {
+    const users = await User.findAll({
+      attributes: ['id', 'name', 'email', 'phone', 'age', 'role', 'department'],
+      raw: true
+    });
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({
+      message: 'Eroare la obținerea raportului',
+      error: error.message
+    });
+  }
 });
-
-
-
-router.get('/report/users', checkRole('admin'), (req, res) => {
-  res.json(users);
-});
-
 
 
 router.get(
@@ -353,23 +450,34 @@ router.get(
       .isString()
       .withMessage('Numele trebuie să fie un text valid'),
   ],
-  (req, res, next) => {
+  async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ message: 'Bad Request', errors: errors.array() });
     }
 
-    const { name } = req.query;
-    let filteredUsers = users;
+    try {
+      const { name } = req.query;
+      let whereConditions = {};
 
-    if (name) {
-      filteredUsers = filteredUsers.filter(u =>
-        u.name.toLowerCase().includes(name.toLowerCase())
-      );
+      if (name) {
+        whereConditions.name = { [Op.iLike]: `%${name}%` };
+      }
+
+      const filteredUsers = await User.findAll({ 
+        where: whereConditions,
+        attributes: ['id', 'name', 'email', 'phone', 'age', 'role', 'department'],
+        raw: true
+      });
+      
+      res.locals.users = filteredUsers;
+      next();
+    } catch (error) {
+      res.status(500).json({
+        message: 'Eroare la căutarea userilor',
+        error: error.message
+      });
     }
-
-    res.locals.users = filteredUsers;
-    next();
   },
   usersUppercase,
   (req, res) => {
