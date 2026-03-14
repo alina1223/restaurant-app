@@ -9,10 +9,14 @@ module.exports = [
     .optional()
     .isEmail().withMessage('Email invalid'),
 
+  body('password')
+    .optional()
+    .isString().withMessage('Parola trebuie să fie text')
+    .isLength({ min: 6 }).withMessage('Parola trebuie să aibă minim 6 caractere'),
+
   body('phone')
     .optional()
-  .matches(/^(\+373|0)\d{7,8}$/).withMessage('Număr de telefon invalid (MD)')
-,
+    .matches(/^(\+373|0)\d{7,8}$/).withMessage('Număr de telefon invalid (MD)'),
 
   body('age')
     .optional()

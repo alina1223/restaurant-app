@@ -27,6 +27,10 @@ const Product = sequelize.define('Product', {
   category: {
     type: DataTypes.ENUM('Pizza', 'Burger', 'Salată', 'Desert', 'Băutură'),
     allowNull: false
+  },
+  imagePath: {
+    type: DataTypes.STRING,
+    allowNull: true
   }
 }, {
   tableName: 'products',

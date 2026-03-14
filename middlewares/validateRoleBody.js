@@ -3,7 +3,9 @@ module.exports = function(req, res, next) {
   const headerRole = req.headers['role']; 
   const requestedRole = req.body.role;
 
-  if (!requestedRole) return res.status(400).json({ message: 'Trebuie specificat rolul' });
+  // Pentru update profil, rolul nu este obligatoriu.
+  // (Pentru create, validarea obligatorie este făcută în DTO-ul de create.)
+  if (!requestedRole) return next();
 
   
   if (headerRole === 'user' && requestedRole !== 'user') {
