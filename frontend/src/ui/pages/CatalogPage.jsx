@@ -122,7 +122,6 @@ export default function CatalogPage() {
     const { name, value } = e.target
     const newFilters = { ...filters, [name]: value }
     setFilters(newFilters)
-    loadProducts(newFilters, selectedCategory)
   }
 
   function handleSpecificFilterChange(e) {
@@ -282,6 +281,42 @@ export default function CatalogPage() {
         marginBottom: '20px' 
       }}>
         <h3>Filtre</h3>
+
+        <div style={{ marginBottom: '15px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <button
+            onClick={() => loadProducts(filters, selectedCategory)}
+            style={{
+              padding: '10px 14px',
+              backgroundColor: '#007bff',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: 'bold'
+            }}
+          >
+            Aplică filtrele
+          </button>
+
+          <button
+            onClick={() => {
+              setFilters({ name: '', minPrice: '', maxPrice: '', inStock: true })
+              setSpecificFilters({})
+              loadProducts({ name: '', minPrice: '', maxPrice: '', inStock: true }, selectedCategory)
+            }}
+            style={{
+              padding: '10px 14px',
+              backgroundColor: '#6c757d',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer'
+            }}
+          >
+            Resetează
+          </button>
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
           {/* General Filters */}
           <div>
@@ -329,7 +364,6 @@ export default function CatalogPage() {
                 onChange={e => {
                   const newFilters = { ...filters, inStock: e.target.checked }
                   setFilters(newFilters)
-                  loadProducts(newFilters, selectedCategory)
                 }}
               />
               {' '}Doar în stoc

@@ -8,9 +8,12 @@ module.exports = [
   body('email')
     .isEmail().withMessage('Email invalid'),
 
-  body('phone')
-  .matches(/^(\+373|0)\d{7,8}$/).withMessage('Număr de telefon invalid (MD)'),
+  body('password')
+    .isString().withMessage('Parola trebuie să fie text')
+    .isLength({ min: 6 }).withMessage('Parola trebuie să aibă minim 6 caractere'),
 
+  body('phone')
+    .matches(/^(\+373|0)\d{7,8}$/).withMessage('Număr de telefon invalid (MD)'),
 
   body('age')
     .isInt({ min: 18 }).withMessage('Trebuie să aveți cel puțin 18 ani'),
@@ -18,7 +21,6 @@ module.exports = [
   body('role')
     .isIn(['user', 'admin', 'manager']).withMessage('Rol invalid'),
 
-  
   body('department').if(body('role').equals('manager'))
     .notEmpty().withMessage('Departamentul este obligatoriu pentru manageri')
 ];

@@ -1,13 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 
-// Creează directorul pentru fișierele de test
 const testDir = './test-csv-files';
 if (!fs.existsSync(testDir)) {
   fs.mkdirSync(testDir);
 }
 
-// 1. Import Valid
 const validCSV = `name,price,description,stock,category
 Pizza Margherita,250,Pizza clasica cu mozzarella si busuioc,20,Pizza
 Burger Classic,200,Burger cu carne vita si branza cheddar,15,Burger
@@ -16,7 +14,6 @@ Paste Carbonara,220,Paste cu sos cremos, bacon si parmezan,18,Paste
 Limonada,15,Bautura racoritoare cu lamaie si menta,50,Băutură
 Tiramisu,120,Desert italian cu mascarpone si cafea,30,Desert`;
 
-// 2. Import Invalid (5 rânduri - 3 corecte + 2 greșite)
 const invalidCSV = `name,price,description,stock,category
 Pizza Prosciutto,280,Pizza cu sunca si ciuperci,22,Pizza
 Suc Portocale,-25,Pret negativ - INVALID,40,Băutură
@@ -24,13 +21,11 @@ Salata Greceasca,160,,35,Salată
 Burger Vegetarian,190,Burger cu legume si halloumi,12,Burger
 Cappuccino,,Bautura fara pret - INVALID,60,Băutură`;
 
-// 3. Fișier Text Invalid
 const textFile = `Acesta este un fisier text invalid
 Nu are format CSV corect
 Nume, Pret, Descriere
 Produs Test, 100, Descriere test`;
 
-// 4. Date pentru Export cu Filtre
 const exportDataCSV = `name,price,description,stock,category
 Pizza Quattro Formaggi,320,Pizza cu 4 tipuri de branza,15,Pizza
 Pizza Diavola,290,Pizza picanta cu salam,18,Pizza
@@ -45,13 +40,11 @@ Apa Minerala,8,Apa plata naturala,150,Băutură
 Cheesecake,140,Desert cu branza si fructe de padure,40,Desert
 Brownie,110,Brownie cu ciocolata si alune,35,Desert`;
 
-// 5. Fișier >2MB (generat programatic)
 let largeCSV = 'name,price,description,stock,category\n';
 for (let i = 0; i < 10000; i++) {
   largeCSV += `Product${i},${100 + (i % 300)},Description for product ${i},${i % 100},${['Pizza', 'Burger', 'Salată', 'Paste', 'Băutură', 'Desert'][i % 6]}\n`;
 }
 
-// Salvează toate fișierele
 fs.writeFileSync(path.join(testDir, 'import-valid.csv'), validCSV);
 fs.writeFileSync(path.join(testDir, 'import-invalid-5-rows.csv'), invalidCSV);
 fs.writeFileSync(path.join(testDir, 'import-invalid.txt'), textFile);

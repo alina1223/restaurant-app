@@ -497,9 +497,43 @@ export default function AdminPage() {
             </div>
 
             <div className="field">
-              <label>Descriere {createProduct.category === 'Pizza' ? '(obligatoriu pentru Pizza)' : ''}</label>
+              <label>Descriere</label>
               <textarea className="textarea" value={createProduct.description} onChange={(e) => setCreateProduct((s) => ({ ...s, description: e.target.value }))} />
               <div className="hint">Max 200 caractere.</div>
+            </div>
+
+            {/* Category-specific attributes (only fields for selected category) */}
+            <div className="card" style={{ marginTop: 12, padding: 12, background: 'rgba(29, 78, 216, 0.04)' }}>
+              <div className="cardTitle" style={{ fontSize: 14 }}>
+                Atribute pentru: {createProduct.category}
+              </div>
+              <div className="form" style={{ gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+                {((CATEGORY_FILTERS[createProduct.category] || [])).map((key) => {
+                  const label = FILTER_LABELS[key] || key
+                  const isCheckbox = key === 'rackmount' || key === 'weatherproof'
+                  const isNumber = key === 'bays'
+                  return isCheckbox ? (
+                    <div key={key} className="field" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(createProduct[key])}
+                        onChange={(e) => setCreateProduct((s) => ({ ...s, [key]: e.target.checked }))}
+                      />
+                      <label>{label}</label>
+                    </div>
+                  ) : (
+                    <div key={key} className="field">
+                      <label>{label}</label>
+                      <input
+                        className="input"
+                        inputMode={isNumber ? 'numeric' : 'text'}
+                        value={createProduct[key] ?? ''}
+                        onChange={(e) => setCreateProduct((s) => ({ ...s, [key]: e.target.value }))}
+                      />
+                    </div>
+                  )
+                })}
+              </div>
             </div>
 
             <div className="field">
@@ -596,7 +630,43 @@ export default function AdminPage() {
               <textarea className="textarea" value={editProduct.description} onChange={(e) => setEditProduct((s) => ({ ...s, description: e.target.value }))} />
             </div>
 
-            <div className="field">
+            <div className="card" style={{ marginTop: 12, padding: 12, background: 'rgba(29, 78, 216, 0.04)' }}>
+              <div className="cardTitle" style={{ fontSize: 14 }}>
+                Atribute pentru: {editProduct.category || '(selectează categoria)'}
+              </div>
+              <div className="form" style={{ gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+                {((CATEGORY_FILTERS[editProduct.category] || []).map((key) => {
+                  const label = FILTER_LABELS[key] || key
+                  const isCheckbox = key === 'rackmount' || key === 'weatherproof'
+                  const isNumber = key === 'bays'
+                  const value = editProduct[key]
+                  const checkedValue = Boolean(value)
+
+                  return isCheckbox ? (
+                    <div key={key} className="field" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input
+                        type="checkbox"
+                        checked={checkedValue}
+                        onChange={(e) => setEditProduct((s) => ({ ...s, [key]: e.target.checked }))}
+                      />
+                      <label>{label}</label>
+                    </div>
+                  ) : (
+                    <div key={key} className="field">
+                      <label>{label}</label>
+                      <input
+                        className="input"
+                        inputMode={isNumber ? 'numeric' : 'text'}
+                        value={value ?? ''}
+                        onChange={(e) => setEditProduct((s) => ({ ...s, [key]: e.target.value }))}
+                      />
+                    </div>
+                  )
+                })) || null}
+              </div>
+            </div>
+
+            <div className="field" style={{ marginTop: 12 }}>
               <label>Imagine (opțional) - JPG, PNG, GIF, WebP (max 5MB)</label>
               <input className="input" type="file" accept="image/*" onChange={handleEditProductImageChange} />
               {editProduct.imagePreview && (
@@ -670,6 +740,42 @@ export default function AdminPage() {
             <div className="field">
               <label>Nume (opțional)</label>
               <input className="input" value={patchProduct.name} onChange={(e) => setPatchProduct((s) => ({ ...s, name: e.target.value }))} />
+            </div>
+
+            <div className="card" style={{ marginTop: 12, padding: 12, background: 'rgba(29, 78, 216, 0.04)' }}>
+              <div className="cardTitle" style={{ fontSize: 14 }}>
+                Atribute pentru: {patchProduct.category || '(selectează categoria)'}
+              </div>
+              <div className="form" style={{ gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+                {((CATEGORY_FILTERS[patchProduct.category] || []).map((key) => {
+                  const label = FILTER_LABELS[key] || key
+                  const isCheckbox = key === 'rackmount' || key === 'weatherproof'
+                  const isNumber = key === 'bays'
+                  const value = patchProduct[key]
+                  const checkedValue = Boolean(value)
+
+                  return isCheckbox ? (
+                    <div key={key} className="field" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input
+                        type="checkbox"
+                        checked={checkedValue}
+                        onChange={(e) => setPatchProduct((s) => ({ ...s, [key]: e.target.checked }))}
+                      />
+                      <label>{label}</label>
+                    </div>
+                  ) : (
+                    <div key={key} className="field">
+                      <label>{label}</label>
+                      <input
+                        className="input"
+                        inputMode={isNumber ? 'numeric' : 'text'}
+                        value={value ?? ''}
+                        onChange={(e) => setPatchProduct((s) => ({ ...s, [key]: e.target.value }))}
+                      />
+                    </div>
+                  )
+                })) || null}
+              </div>
             </div>
 
             <div className="field">
