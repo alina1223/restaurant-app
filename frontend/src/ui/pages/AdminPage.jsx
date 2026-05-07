@@ -3,9 +3,33 @@ import { api, formatAxiosError, unwrapApiData } from '../../utils/apiClient'
 import { useAuth } from '../../state/auth/AuthContext.jsx'
 import ResultBox from '../components/ResultBox.jsx'
 import { useCall } from '../components/useCall.js'
+import { renderProductForm } from '../components/ProductFormHelper.jsx'
 
-const PRODUCT_CATEGORIES = ['Pizza', 'Burger', 'Salată', 'Desert', 'Băutură']
-const EXPORT_CATEGORIES = [''].concat(['Pizza', 'Burger', 'Salată', 'Paste', 'Băutură', 'Desert'])
+const PRODUCT_CATEGORIES = ['Firewall', 'Router', 'Camera', 'NAS']
+const EXPORT_CATEGORIES = [''].concat(['Firewall', 'Router', 'Camera', 'NAS'])
+
+const CATEGORY_FILTERS = {
+  Firewall: ['brand', 'ram', 'ports', 'throughput', 'vpn', 'rackmount'],
+  Router: ['brand', 'wifiStandard', 'ram', 'ports', 'vpnSupport'],
+  Camera: ['brand', 'resolution', 'connectivity', 'weatherproof'],
+  NAS: ['brand', 'bays', 'ram', 'raid']
+}
+
+const FILTER_LABELS = {
+  brand: 'Brand',
+  ram: 'RAM',
+  ports: 'Ports',
+  throughput: 'Throughput',
+  bays: 'Bays',
+  vpn: 'VPN',
+  rackmount: 'Rackmount',
+  wifiStandard: 'Wi-Fi Standard',
+  vpnSupport: 'VPN Support',
+  resolution: 'Resolution',
+  connectivity: 'Connectivity',
+  weatherproof: 'Weatherproof',
+  raid: 'RAID'
+}
 
 export default function AdminPage() {
   const auth = useAuth()
@@ -67,6 +91,19 @@ export default function AdminPage() {
     description: '',
     stock: '',
     category: PRODUCT_CATEGORIES[0],
+    brand: '',
+    ram: '',
+    ports: '',
+    throughput: '',
+    vpn: '',
+    rackmount: false,
+    wifiStandard: '',
+    vpnSupport: '',
+    resolution: '',
+    connectivity: '',
+    weatherproof: false,
+    bays: '',
+    raid: '',
     image: null,
     imagePreview: null
   })
@@ -78,6 +115,19 @@ export default function AdminPage() {
     description: '',
     stock: '',
     category: '',
+    brand: '',
+    ram: '',
+    ports: '',
+    throughput: '',
+    vpn: '',
+    rackmount: false,
+    wifiStandard: '',
+    vpnSupport: '',
+    resolution: '',
+    connectivity: '',
+    weatherproof: false,
+    bays: '',
+    raid: '',
     image: null,
     imagePreview: null
   })
@@ -88,7 +138,20 @@ export default function AdminPage() {
     price: '',
     description: '',
     stock: '',
-    category: ''
+    category: '',
+    brand: '',
+    ram: '',
+    ports: '',
+    throughput: '',
+    vpn: '',
+    rackmount: false,
+    wifiStandard: '',
+    vpnSupport: '',
+    resolution: '',
+    connectivity: '',
+    weatherproof: false,
+    bays: '',
+    raid: ''
   })
 
   const [deleteProductId, setDeleteProductId] = useState('')
@@ -145,7 +208,21 @@ export default function AdminPage() {
     if (requireAll || fields.stock !== '') body.stock = parseNumber(fields.stock)
     if (requireAll || fields.category !== '') body.category = fields.category
 
-   
+    // Hardware-specific fields
+    if (requireAll || fields.brand !== '') body.brand = String(fields.brand || '').trim()
+    if (requireAll || fields.ram !== '') body.ram = String(fields.ram || '').trim()
+    if (requireAll || fields.ports !== '') body.ports = String(fields.ports || '').trim()
+    if (requireAll || fields.throughput !== '') body.throughput = String(fields.throughput || '').trim()
+    if (requireAll || fields.vpn !== '') body.vpn = String(fields.vpn || '').trim()
+    if (requireAll || fields.rackmount !== undefined) body.rackmount = fields.rackmount
+    if (requireAll || fields.wifiStandard !== '') body.wifiStandard = String(fields.wifiStandard || '').trim()
+    if (requireAll || fields.vpnSupport !== '') body.vpnSupport = String(fields.vpnSupport || '').trim()
+    if (requireAll || fields.resolution !== '') body.resolution = String(fields.resolution || '').trim()
+    if (requireAll || fields.connectivity !== '') body.connectivity = String(fields.connectivity || '').trim()
+    if (requireAll || fields.weatherproof !== undefined) body.weatherproof = fields.weatherproof
+    if (requireAll || fields.bays !== '') body.bays = parseNumber(fields.bays)
+    if (requireAll || fields.raid !== '') body.raid = String(fields.raid || '').trim()
+
     Object.keys(body).forEach((k) => {
       if (body[k] === undefined) delete body[k]
     })

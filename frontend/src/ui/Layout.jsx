@@ -9,10 +9,10 @@ export default function Layout() {
   return (
     <div className="appShell appTheme">
       <nav className="topNav">
-        <div className="brand">Restaurant</div>
+        <div className="brand">Hardware Store</div>
 
         <NavLink to="/">Home</NavLink>
-        <NavLink to="/menu">Menu</NavLink>
+        <NavLink to="/catalog">Catalog</NavLink>
         <NavLink to="/cart">Cart ({cart.count})</NavLink>
         <NavLink to="/account">Account</NavLink>
         {auth.isAdmin && <NavLink to="/admin">Admin</NavLink>}

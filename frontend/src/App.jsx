@@ -3,7 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import Layout from './ui/Layout.jsx'
 
 import HomePage from './ui/pages/HomePage.jsx'
-import MenuPage from './ui/pages/MenuPage.jsx'
+import CatalogPage from './ui/pages/CatalogPage.jsx'
 import ProductPage from './ui/pages/ProductPage.jsx'
 import CartPage from './ui/pages/CartPage.jsx'
 import CheckoutPage from './ui/pages/CheckoutPage.jsx'
@@ -18,11 +18,12 @@ function App() {
       <Route element={<Layout />}>
         <Route path="/" element={<HomePage />} />
         {}
-        <Route path="/dashboard" element={<Navigate to="/menu" replace />} />
+        <Route path="/dashboard" element={<Navigate to="/catalog" replace />} />
         <Route path="/login" element={<Navigate to="/account" replace />} />
         <Route path="/resend-verification" element={<Navigate to="/account" replace />} />
 
-        <Route path="/menu" element={<MenuPage />} />
+        <Route path="/menu" element={<Navigate to="/catalog" replace />} />
+        <Route path="/catalog" element={<CatalogPage />} />
         <Route path="/products/:id" element={<ProductPage />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/checkout" element={<CheckoutPage />} />
@@ -32,7 +33,7 @@ function App() {
         <Route path="/verify-email" element={<VerifyEmailPage />} />
 
         <Route path="/admin" element={<AdminPage />} />
-        <Route path="*" element={<Navigate to="/menu" replace />} />
+        <Route path="*" element={<Navigate to="/catalog" replace />} />
       </Route>
     </Routes>
   )
