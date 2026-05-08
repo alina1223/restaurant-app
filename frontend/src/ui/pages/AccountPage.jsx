@@ -232,7 +232,7 @@ export default function AccountPage() {
   }
 
   return (
-    <div>
+    <div className="accountPage">
       <h1 className="pageTitle">Account</h1>
 
       <div className="btnRow">

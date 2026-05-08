@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, unwrapApiData } from '../../utils/apiClient'
 import { useAuth } from '../../state/auth/AuthContext.jsx'
@@ -35,6 +35,16 @@ function formatPrice(value) {
   return String(value)
 }
 
+function getUniqueSortedValues(products, key) {
+  const set = new Set()
+  for (const p of products) {
+    const v = p?.[key]
+    if (v === null || v === undefined || v === '') continue
+    set.add(String(v))
+  }
+  return [...set].sort()
+}
+
 export default function CatalogPage() {
   const auth = useAuth()
   const cart = useCart()
@@ -58,7 +68,7 @@ export default function CatalogPage() {
   const [deletingId, setDeletingId] = useState(null)
   const [addingId, setAddingId] = useState(null)
 
-  const currentCategoryFilters = CATEGORY_FILTERS[selectedCategory] || []
+  const currentCategoryFilters = useMemo(() => CATEGORY_FILTERS[selectedCategory] || [], [selectedCategory])
 
   async function loadProducts(nextFilters, nextCategory) {
     setLoading(true)
@@ -79,21 +89,17 @@ export default function CatalogPage() {
       let items = unwrapApiData(response)
       items = Array.isArray(items) ? items : []
 
-      // Apply specific category filters
-      items = items.filter(p => {
+      items = items.filter((p) => {
         for (const [key, value] of Object.entries(specificFilters)) {
-          if (value && p[key] !== undefined) {
-            if (typeof p[key] === 'string') {
-              if (!String(p[key]).toLowerCase().includes(String(value).toLowerCase())) {
-                return false
-              }
-            } else if (Array.isArray(p[key])) {
-              if (!p[key].map(x => String(x).toLowerCase()).includes(String(value).toLowerCase())) {
-                return false
-              }
-            } else if (p[key] !== value) {
-              return false
-            }
+          if (!value) continue
+          if (p[key] === undefined) continue
+
+          if (typeof p[key] === 'string') {
+            if (!String(p[key]).toLowerCase().includes(String(value).toLowerCase())) return false
+          } else if (Array.isArray(p[key])) {
+            if (!p[key].map((x) => String(x).toLowerCase()).includes(String(value).toLowerCase())) return false
+          } else {
+            if (p[key] !== value) return false
           }
         }
         return true
@@ -111,6 +117,7 @@ export default function CatalogPage() {
   useEffect(() => {
     setSpecificFilters({})
     loadProducts(filters, selectedCategory)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCategory])
 
   function handleCategoryChange(cat) {
@@ -120,14 +127,12 @@ export default function CatalogPage() {
 
   function handleFilterChange(e) {
     const { name, value } = e.target
-    const newFilters = { ...filters, [name]: value }
-    setFilters(newFilters)
+    setFilters((s) => ({ ...s, [name]: value }))
   }
 
   function handleSpecificFilterChange(e) {
     const { name, value } = e.target
-    const newSpecificFilters = { ...specificFilters, [name]: value }
-    setSpecificFilters(newSpecificFilters)
+    setSpecificFilters((s) => ({ ...s, [name]: value }))
   }
 
   async function addToCart(productId) {
@@ -137,48 +142,49 @@ export default function CatalogPage() {
     }
     try {
       setAddingId(productId)
-      // Găsește produsul după id din lista de produse
       const product = products.find((p) => p.id === productId)
       if (product) cart.add(product, 1)
+
       await api.post(
         '/users/cart/add',
         { productId, quantity: 1 },
         { headers: { Authorization: `Bearer ${auth.token}` } }
       )
       alert('Produs adăugat în coș')
-    } catch (error) {
-      alert('Eroare: ' + (error?.response?.data?.message || error.message || 'Necunoscut'))
+    } catch (e) {
+      alert('Eroare: ' + (e?.response?.data?.message || e.message || 'Necunoscut'))
     } finally {
       setAddingId(null)
     }
   }
 
   async function saveEdit(productId) {
-    if (!editDraft.name?.trim()) {
+    if (!editDraft?.name?.trim()) {
       alert('Numele produsului nu poate fi gol')
       return
     }
     try {
       setSavingId(productId)
       const formData = new FormData()
+
       for (const [key, value] of Object.entries(editDraft)) {
-        if (key !== 'imagePreview') {
-          if (value !== null && value !== undefined) {
-            formData.append(key, value)
-          }
-        }
+        if (key === 'imagePreview') continue
+        if (value === null || value === undefined) continue
+        formData.append(key, value)
       }
 
       const response = await api.put(`/admin/edit/${productId}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
+
       const updated = unwrapApiData(response)
-      setProducts(products.map(p => (p.id === productId ? updated : p)))
+      setProducts((prev) => prev.map((p) => (p.id === productId ? updated : p)))
+
       setEditingId(null)
       setEditDraft({})
       alert('Produs actualizat')
-    } catch (error) {
-      alert('Eroare: ' + (error.message || 'Necunoscut'))
+    } catch (e) {
+      alert('Eroare: ' + (e.message || 'Necunoscut'))
     } finally {
       setSavingId(null)
     }
@@ -189,10 +195,10 @@ export default function CatalogPage() {
     try {
       setDeletingId(productId)
       await api.delete(`/admin/delete/product/${productId}`)
-      setProducts(products.filter(p => p.id !== productId))
+      setProducts((prev) => prev.filter((p) => p.id !== productId))
       alert('Produs șters')
-    } catch (error) {
-      alert('Eroare: ' + (error.message || 'Necunoscut'))
+    } catch (e) {
+      alert('Eroare: ' + (e.message || 'Necunoscut'))
     } finally {
       setDeletingId(null)
     }
@@ -225,53 +231,44 @@ export default function CatalogPage() {
   }
 
   function handleImageChange(e) {
-    const file = e.target.files[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = e => {
-        setEditDraft(prev => ({
-          ...prev,
-          image: file,
-          imagePreview: e.target.result
-        }))
-      }
-      reader.readAsDataURL(file)
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      setEditDraft((prev) => ({
+        ...prev,
+        image: file,
+        imagePreview: ev.target.result
+      }))
     }
+    reader.readAsDataURL(file)
   }
 
   function handleEditFieldChange(e) {
     const { name, value, type, checked } = e.target
     const finalValue = type === 'checkbox' ? checked : value
-    setEditDraft(prev => ({ ...prev, [name]: finalValue }))
+    setEditDraft((prev) => ({ ...prev, [name]: finalValue }))
   }
 
   return (
-    <div style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }}>
-      <h1>Hardware Catalog</h1>
+    <div className="catalogPage catalogPageWrap">
+      <h1 className="catalogPageTitle">Hardware Catalog</h1>
 
       {/* Category Carousel */}
-      <div style={{ 
-        marginBottom: '30px', 
-        display: 'flex', 
-        gap: '10px', 
-        overflowX: 'auto',
-        paddingBottom: '10px'
-      }}>
-        {PRODUCT_CATEGORIES.map(cat => (
+      <div style={{ marginBottom: 16, display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 10 }}>
+        {PRODUCT_CATEGORIES.map((cat) => (
           <button
             key={cat}
             onClick={() => handleCategoryChange(cat)}
+            className="btn"
             style={{
-              padding: '12px 24px',
-              border: '2px solid ' + (selectedCategory === cat ? '#007bff' : '#ddd'),
-              backgroundColor: selectedCategory === cat ? '#007bff' : '#fff',
-              color: selectedCategory === cat ? '#fff' : '#000',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: selectedCategory === cat ? 'bold' : 'normal',
-              whiteSpace: 'nowrap',
-              transition: 'all 0.3s'
+              borderRadius: 14,
+              border: '1px solid rgba(45, 255, 111, 0.30)',
+              background: selectedCategory === cat ? 'rgba(45, 255, 111, 0.12)' : 'rgba(11, 18, 32, 0.45)',
+              color: selectedCategory === cat ? '#bfffe0' : 'rgba(230, 240, 255, 0.86)',
+              fontWeight: 900,
+              minWidth: 98
             }}
           >
             {cat}
@@ -280,141 +277,91 @@ export default function CatalogPage() {
       </div>
 
       {/* Filters */}
-      <div style={{ 
-        backgroundColor: '#f8f9fa', 
-        padding: '20px', 
-        borderRadius: '8px', 
-        marginBottom: '20px' 
-      }}>
-        <h3>Filtre</h3>
+      <div className="card" style={{ marginBottom: 18 }}>
+        <h3 className="cardTitle" style={{ marginTop: 0 }}>
+          Filtre
+        </h3>
 
-        <div style={{ marginBottom: '15px', display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <button
-            onClick={() => loadProducts(filters, selectedCategory)}
-            style={{
-              padding: '10px 14px',
-              backgroundColor: '#007bff',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontWeight: 'bold'
-            }}
-          >
+        <div className="btnRow">
+          <button className="btn btnPrimary" onClick={() => loadProducts(filters, selectedCategory)} disabled={loading}>
             Aplică filtrele
           </button>
 
           <button
+            className="btn"
+            disabled={loading}
             onClick={() => {
-              setFilters({ name: '', minPrice: '', maxPrice: '', inStock: true })
+              const reset = { name: '', minPrice: '', maxPrice: '', inStock: true }
+              setFilters(reset)
               setSpecificFilters({})
-              loadProducts({ name: '', minPrice: '', maxPrice: '', inStock: true }, selectedCategory)
-            }}
-            style={{
-              padding: '10px 14px',
-              backgroundColor: '#6c757d',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer'
+              loadProducts(reset, selectedCategory)
             }}
           >
             Resetează
           </button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
-          {/* General Filters */}
-          <div>
+        <div className="form" style={{ marginTop: 14, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+          <div className="field">
             <label>Căutare după nume</label>
-            <input
-              type="text"
-              name="name"
-              placeholder="Căutare..."
-              value={filters.name}
-              onChange={handleFilterChange}
-              style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-            />
+            <input className="input" type="text" name="name" placeholder="Căutare..." value={filters.name} onChange={handleFilterChange} />
           </div>
 
-          <div>
+          <div className="field">
             <label>Preț minim (MDL)</label>
-            <input
-              type="number"
-              name="minPrice"
-              placeholder="0"
-              value={filters.minPrice}
-              onChange={handleFilterChange}
-              style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-            />
+            <input className="input" type="number" name="minPrice" placeholder="0" value={filters.minPrice} onChange={handleFilterChange} />
           </div>
 
-          <div>
+          <div className="field">
             <label>Preț maxim (MDL)</label>
-            <input
-              type="number"
-              name="maxPrice"
-              placeholder="10000"
-              value={filters.maxPrice}
-              onChange={handleFilterChange}
-              style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-            />
+            <input className="input" type="number" name="maxPrice" placeholder="10000" value={filters.maxPrice} onChange={handleFilterChange} />
           </div>
 
-          <div>
-            <label>
+          <div className="field">
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <input
                 type="checkbox"
                 name="inStock"
                 checked={filters.inStock}
-                onChange={e => {
-                  const newFilters = { ...filters, inStock: e.target.checked }
-                  setFilters(newFilters)
-                }}
+                onChange={(e) => setFilters((s) => ({ ...s, inStock: e.target.checked }))}
               />
-              {' '}Doar în stoc
+              Doar în stoc
             </label>
           </div>
 
-          {/* Category-specific filters */}
-          {currentCategoryFilters.map(filterKey => {
+          {currentCategoryFilters.map((filterKey) => {
             if (filterKey === 'rackmount' || filterKey === 'weatherproof') {
               return (
-                <div key={filterKey}>
-                  <label>
+                <div key={filterKey} className="field">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <input
                       type="checkbox"
                       name={filterKey}
-                      checked={specificFilters[filterKey] || false}
-                      onChange={e => {
-                        const newSpecificFilters = { ...specificFilters, [filterKey]: e.target.checked }
-                        setSpecificFilters(newSpecificFilters)
-                      }}
+                      checked={Boolean(specificFilters[filterKey])}
+                      onChange={(e) => setSpecificFilters((s) => ({ ...s, [filterKey]: e.target.checked }))}
                     />
-                    {' '}{FILTER_LABELS[filterKey]}
+                    {FILTER_LABELS[filterKey]}
                   </label>
                 </div>
               )
             }
 
-            const uniqueValues = [...new Set(
-              products
-                .filter(p => p[filterKey])
-                .map(p => String(p[filterKey]))
-            )].sort()
+            const uniqueValues = getUniqueSortedValues(products, filterKey)
 
             return (
-              <div key={filterKey}>
+              <div key={filterKey} className="field">
                 <label>{FILTER_LABELS[filterKey]}</label>
                 <select
+                  className="input"
                   name={filterKey}
                   value={specificFilters[filterKey] || ''}
                   onChange={handleSpecificFilterChange}
-                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                 >
                   <option value="">Toate</option>
-                  {uniqueValues.map(val => (
-                    <option key={val} value={val}>{val}</option>
+                  {uniqueValues.map((val) => (
+                    <option key={val} value={val}>
+                      {val}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -424,185 +371,122 @@ export default function CatalogPage() {
       </div>
 
       {/* Products Grid */}
-      {loading && <p>Se încarcă...</p>}
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {loading && <p className="muted">Se încarcă...</p>}
+      {error && <div className="alert">{error}</div>}
 
       {!loading && !error && (
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
-          gap: '20px' 
-        }}>
-          {products.map(product => (
-            <div 
-              key={product.id} 
-              style={{ 
-                border: '1px solid #ddd', 
-                borderRadius: '8px', 
-                overflow: 'hidden',
-                transition: 'all 0.3s'
-              }}
-              onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'}
-              onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
+          {products.map((product) => (
+            <div
+              key={product.id}
+              className="card"
+              style={{ overflow: 'hidden', borderRadius: 16, border: '1px solid rgba(230,240,255,0.12)' }}
             >
               {editingId === product.id ? (
-                // Edit Mode
-                <div style={{ padding: '15px' }}>
-                  <h3>Editează produsul</h3>
-                  <div style={{ marginBottom: '10px' }}>
-                    <label>Nume</label>
-                    <input
-                      type="text"
-                      name="name"
-                      value={editDraft.name}
-                      onChange={handleEditFieldChange}
-                      style={{ width: '100%', padding: '6px', marginBottom: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                    />
-                  </div>
-                  <div style={{ marginBottom: '10px' }}>
-                    <label>Preț</label>
-                    <input
-                      type="number"
-                      name="price"
-                      value={editDraft.price}
-                      onChange={handleEditFieldChange}
-                      style={{ width: '100%', padding: '6px', marginBottom: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                    />
-                  </div>
-                  <div style={{ marginBottom: '10px' }}>
-                    <label>Stoc</label>
-                    <input
-                      type="number"
-                      name="stock"
-                      value={editDraft.stock}
-                      onChange={handleEditFieldChange}
-                      style={{ width: '100%', padding: '6px', marginBottom: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                    />
-                  </div>
-                  <div style={{ marginBottom: '10px' }}>
-                    <label>Descriere</label>
-                    <textarea
-                      name="description"
-                      value={editDraft.description}
-                      onChange={handleEditFieldChange}
-                      style={{ width: '100%', padding: '6px', marginBottom: '8px', border: '1px solid #ddd', borderRadius: '4px', minHeight: '60px' }}
-                    />
+                <div style={{ padding: 12 }}>
+                  <div className="cardTitle" style={{ marginBottom: 10 }}>
+                    Editează produsul
                   </div>
 
-                  {/* Category-specific fields */}
-                  {currentCategoryFilters.map(filterKey => {
-                    if (filterKey === 'rackmount' || filterKey === 'weatherproof') {
+                  <div className="form" style={{ gridTemplateColumns: '1fr', gap: 10 }}>
+                    <div className="field">
+                      <label>Nume</label>
+                      <input className="input" type="text" name="name" value={editDraft.name} onChange={handleEditFieldChange} />
+                    </div>
+
+                    <div className="field">
+                      <label>Preț</label>
+                      <input className="input" type="number" name="price" value={editDraft.price} onChange={handleEditFieldChange} />
+                    </div>
+
+                    <div className="field">
+                      <label>Stoc</label>
+                      <input className="input" type="number" name="stock" value={editDraft.stock} onChange={handleEditFieldChange} />
+                    </div>
+
+                    <div className="field">
+                      <label>Descriere</label>
+                      <textarea className="textarea" name="description" value={editDraft.description} onChange={handleEditFieldChange} />
+                    </div>
+
+                    {currentCategoryFilters.map((filterKey) => {
+                      if (filterKey === 'rackmount' || filterKey === 'weatherproof') {
+                        return (
+                          <div key={filterKey} className="field">
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <input type="checkbox" name={filterKey} checked={Boolean(editDraft[filterKey])} onChange={handleEditFieldChange} />
+                              {FILTER_LABELS[filterKey]}
+                            </label>
+                          </div>
+                        )
+                      }
+
+                      if (filterKey === 'bays') {
+                        return (
+                          <div key={filterKey} className="field">
+                            <label>{FILTER_LABELS[filterKey]}</label>
+                            <input className="input" type="number" name={filterKey} value={editDraft[filterKey] || ''} onChange={handleEditFieldChange} />
+                          </div>
+                        )
+                      }
+
                       return (
-                        <div key={filterKey} style={{ marginBottom: '10px' }}>
-                          <label>
-                            <input
-                              type="checkbox"
-                              name={filterKey}
-                              checked={editDraft[filterKey] || false}
-                              onChange={handleEditFieldChange}
-                            />
-                            {' '}{FILTER_LABELS[filterKey]}
-                          </label>
-                        </div>
-                      )
-                    }
-                    if (filterKey === 'bays') {
-                      return (
-                        <div key={filterKey} style={{ marginBottom: '10px' }}>
+                        <div key={filterKey} className="field">
                           <label>{FILTER_LABELS[filterKey]}</label>
-                          <input
-                            type="number"
-                            name={filterKey}
-                            value={editDraft[filterKey] || ''}
-                            onChange={handleEditFieldChange}
-                            style={{ width: '100%', padding: '6px', border: '1px solid #ddd', borderRadius: '4px' }}
-                          />
+                          <input className="input" type="text" name={filterKey} value={editDraft[filterKey] || ''} onChange={handleEditFieldChange} />
                         </div>
                       )
-                    }
-                    return (
-                      <div key={filterKey} style={{ marginBottom: '10px' }}>
-                        <label>{FILTER_LABELS[filterKey]}</label>
-                        <input
-                          type="text"
-                          name={filterKey}
-                          value={editDraft[filterKey] || ''}
-                          onChange={handleEditFieldChange}
-                          style={{ width: '100%', padding: '6px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    })}
+
+                    <div className="field">
+                      <label>Imagine</label>
+                      <input type="file" accept="image/*" onChange={handleImageChange} className="input" />
+                      {editDraft.imagePreview && (
+                        <img
+                          src={editDraft.imagePreview}
+                          alt="Preview"
+                          style={{ width: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: 12, marginTop: 10 }}
                         />
-                      </div>
-                    )
-                  })}
+                      )}
+                    </div>
 
-                  <div style={{ marginBottom: '10px' }}>
-                    <label>Imagine</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      style={{ width: '100%', marginBottom: '8px' }}
-                    />
-                    {editDraft.imagePreview && (
-                      <img src={editDraft.imagePreview} style={{ width: '100%', maxHeight: '200px', borderRadius: '4px', marginBottom: '8px' }} alt="Preview" />
-                    )}
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                      onClick={() => saveEdit(product.id)}
-                      disabled={savingId === product.id}
-                      style={{
-                        flex: 1,
-                        padding: '8px',
-                        backgroundColor: '#28a745',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {savingId === product.id ? 'Se salvează...' : 'Salvează'}
-                    </button>
-                    <button
-                      onClick={() => setEditingId(null)}
-                      style={{
-                        flex: 1,
-                        padding: '8px',
-                        backgroundColor: '#6c757d',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Anulează
-                    </button>
+                    <div className="btnRow">
+                      <button className="btn btnPrimary" disabled={savingId === product.id} onClick={() => saveEdit(product.id)}>
+                        {savingId === product.id ? 'Se salvează…' : 'Salvează'}
+                      </button>
+                      <button className="btn" onClick={() => setEditingId(null)}>
+                        Anulează
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (
-                // View Mode
                 <>
                   {product.imagePath && (
-                    <img 
-                      src={product.imagePath} 
+                    <img
+                      src={product.imagePath}
                       alt={product.name}
-                      style={{ width: '100%', height: '200px', objectFit: 'cover' }}
+                      style={{ width: '100%', height: 190, objectFit: 'cover', borderBottom: '1px solid rgba(230,240,255,0.10)' }}
                     />
                   )}
-                  <div style={{ padding: '15px' }}>
-                    <h4 style={{ marginTop: 0, marginBottom: '8px' }}>{product.name}</h4>
-                    <p style={{ color: '#666', fontSize: '14px', marginBottom: '10px' }}>
-                      {product.description}
-                    </p>
 
-                    {/* Display category-specific attributes */}
-                    <div style={{ backgroundColor: '#f8f9fa', padding: '10px', borderRadius: '4px', marginBottom: '10px', fontSize: '13px' }}>
-                      {currentCategoryFilters.map(filterKey => {
+                  <div style={{ padding: 12 }}>
+                    <div className="cardTitle" style={{ fontSize: 18, marginBottom: 6 }}>
+                      {product.name}
+                    </div>
+
+                    <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>
+                      {product.description}
+                    </div>
+
+                    {/* Attributes */}
+                    <div style={{ background: 'rgba(11,18,32,0.45)', border: '1px solid rgba(230,240,255,0.10)', borderRadius: 12, padding: 10, marginBottom: 10 }}>
+                      {currentCategoryFilters.map((filterKey) => {
                         const value = product[filterKey]
                         if (value !== null && value !== undefined && value !== '' && value !== false) {
                           return (
-                            <div key={filterKey} style={{ marginBottom: '4px' }}>
-                              <strong>{FILTER_LABELS[filterKey]}:</strong> {String(value)}
+                            <div key={filterKey} style={{ marginBottom: 4, color: 'rgba(230,240,255,0.82)' }}>
+                              <strong style={{ color: '#bfffe0' }}>{FILTER_LABELS[filterKey]}:</strong> {String(value)}
                             </div>
                           )
                         }
@@ -610,87 +494,51 @@ export default function CatalogPage() {
                       })}
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                      <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#007bff' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                      <div className="price" style={{ fontSize: 20 }}>
                         {formatPrice(product.price)}
-                      </span>
-                      <span style={{ 
-                        fontSize: '12px',
-                        padding: '4px 8px',
-                        backgroundColor: product.stock > 0 ? '#d4edda' : '#f8d7da',
-                        color: product.stock > 0 ? '#155724' : '#721c24',
-                        borderRadius: '4px'
-                      }}>
-                        {product.stock > 0 ? `${product.stock} în stoc` : 'Epuizat'}
-                      </span>
-                    </div>
+                      </div>
 
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
-                      <Link
-                        to={`/products/${product.id}`}
+                      <div
                         style={{
-                          flex: 1,
-                          padding: '8px',
-                          backgroundColor: '#17a2b8',
-                          color: 'white',
-                          textDecoration: 'none',
-                          borderRadius: '4px',
-                          textAlign: 'center',
-                          fontSize: '14px',
-                          border: 'none',
-                          cursor: 'pointer'
+                          fontSize: 12,
+                          fontWeight: 900,
+                          padding: '6px 10px',
+                          borderRadius: 999,
+                          background: product.stock > 0 ? 'rgba(45,255,111,0.14)' : 'rgba(255,59,92,0.10)',
+                          border: `1px solid ${product.stock > 0 ? 'rgba(45,255,111,0.35)' : 'rgba(255,59,92,0.35)'}`,
+                          color: product.stock > 0 ? '#bfffe0' : '#ffd0da'
                         }}
                       >
+                        {product.stock > 0 ? `${product.stock} în stoc` : 'Epuizat'}
+                      </div>
+                    </div>
+
+                    <div className="btnRow" style={{ marginTop: 0 }}>
+                      <Link className="btn" to={`/products/${product.id}`}>
                         Detalii
                       </Link>
+
                       <button
+                        className="btn btnPrimary"
                         onClick={() => addToCart(product.id)}
                         disabled={addingId === product.id || product.stock === 0}
-                        style={{
-                          flex: 1,
-                          padding: '8px',
-                          backgroundColor: product.stock === 0 ? '#ccc' : '#28a745',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '14px'
-                        }}
+                        style={{ opacity: product.stock === 0 ? 0.6 : 1 }}
                       >
                         {addingId === product.id ? '...' : 'Coș'}
                       </button>
                     </div>
 
                     {auth.user?.role === 'admin' && (
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                          onClick={() => openEditMode(product)}
-                          style={{
-                            flex: 1,
-                            padding: '6px',
-                            backgroundColor: '#ffc107',
-                            color: '#000',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '12px'
-                          }}
-                        >
+                      <div className="btnRow" style={{ marginTop: 10 }}>
+                        <button className="btn" onClick={() => openEditMode(product)} style={{ borderColor: 'rgba(255,191,0,0.45)' }}>
                           Editează
                         </button>
                         <button
+                          className="btn"
                           onClick={() => deleteProduct(product.id)}
                           disabled={deletingId === product.id}
-                          style={{
-                            flex: 1,
-                            padding: '6px',
-                            backgroundColor: '#dc3545',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '12px'
-                          }}
+                          style={{ borderColor: 'rgba(255,59,92,0.45)', color: deletingId === product.id ? 'rgba(230,240,255,0.7)' : '#ffd0da' }}
                         >
                           {deletingId === product.id ? '...' : 'Șterge'}
                         </button>
@@ -704,9 +552,7 @@ export default function CatalogPage() {
         </div>
       )}
 
-      {!loading && !error && products.length === 0 && (
-        <p style={{ textAlign: 'center', color: '#666' }}>Nu au fost găsite produse</p>
-      )}
+      {!loading && !error && products.length === 0 && <p className="muted" style={{ textAlign: 'center' }}>Nu au fost găsite produse</p>}
     </div>
   )
 }

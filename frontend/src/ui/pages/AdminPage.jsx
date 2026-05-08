@@ -358,7 +358,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div>
+    <div className="adminPage">
       <h1 className="pageTitle">Admin</h1>
       {!auth.token ? <div className="alert">Autentifică-te ca admin ca să folosești aceste rute.</div> : null}
 

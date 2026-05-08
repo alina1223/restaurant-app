@@ -5,7 +5,7 @@
 
   color-scheme: light;
   color: #0f172a;
-  background-color: #f6f7fb;
+  background-color: #070a0f;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -20,8 +20,12 @@ body {
   margin: 0;
   display: block;
   min-width: 320px;
-  min-height: 100vh;
-  background: #f6f7fb;
+
+  /* keep dark background across the whole document */
+  min-height: 1000px;
+  background: #070a0f;
+
+  color: inherit;
 }
 
 * { box-sizing: border-box; }
