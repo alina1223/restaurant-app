@@ -131,17 +131,23 @@ export default function CatalogPage() {
   }
 
   async function addToCart(productId) {
-    if (!auth.user) {
+    if (!auth.user || !auth.token) {
       alert('Trebuie să te autentifici pentru a adăuga produse în coș')
       return
     }
     try {
       setAddingId(productId)
-      const response = await api.post('/cart/add-item', { productId, quantity: 1 })
-      cart.setCartCount((cart.cartCount || 0) + 1)
+      // Găsește produsul după id din lista de produse
+      const product = products.find((p) => p.id === productId)
+      if (product) cart.add(product, 1)
+      await api.post(
+        '/users/cart/add',
+        { productId, quantity: 1 },
+        { headers: { Authorization: `Bearer ${auth.token}` } }
+      )
       alert('Produs adăugat în coș')
     } catch (error) {
-      alert('Eroare: ' + (error.message || 'Necunoscut'))
+      alert('Eroare: ' + (error?.response?.data?.message || error.message || 'Necunoscut'))
     } finally {
       setAddingId(null)
     }
