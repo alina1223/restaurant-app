@@ -1,20 +1,36 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, unwrapApiData } from '../../utils/apiClient'
+import { api, unwrapApiData, getImageUrl } from '../../utils/apiClient'
 import { useAuth } from '../../state/auth/AuthContext.jsx'
 import { useCart } from '../../state/cart/CartContext.jsx'
+
+const CATEGORY_FILTERS = {
+  Firewall: ['brand', 'ram', 'ports', 'throughput', 'vpn', 'rackmount'],
+  Router: ['brand', 'wifiStandard', 'ram', 'ports', 'vpnSupport'],
+  Camera: ['brand', 'resolution', 'connectivity', 'weatherproof'],
+  NAS: ['brand', 'bays', 'ram', 'raid']
+}
+
+const FILTER_LABELS = {
+  brand: 'Brand',
+  ram: 'RAM',
+  ports: 'Ports',
+  throughput: 'Throughput',
+  vpn: 'VPN',
+  rackmount: 'Rackmount',
+  wifiStandard: 'Wi-Fi Standard',
+  vpnSupport: 'VPN Support',
+  resolution: 'Resolution',
+  connectivity: 'Connectivity',
+  weatherproof: 'Weatherproof',
+  bays: 'Bays',
+  raid: 'RAID'
+}
 
 function formatPrice(value) {
   const n = Number(value)
   if (Number.isFinite(n)) return `${n.toFixed(2)} MDL`
   return String(value)
-}
-
-function getImageUrl(imagePath) {
-  if (!imagePath) return null
-  if (imagePath.startsWith('http')) return imagePath
-  if (imagePath.startsWith('data:')) return imagePath
-  return `http://localhost:3000${imagePath}`
 }
 
 export default function ProductPage() {
@@ -120,6 +136,7 @@ export default function ProductPage() {
 
           {product.imagePath && (
             <div style={{ marginBottom: 15, textAlign: 'center' }}>
+              {console.log('[ProductPage render] Product image:', { id: product.id, name: product.name, imagePath: product.imagePath, imageUrl: getImageUrl(product.imagePath) })}
               <img 
                 src={getImageUrl(product.imagePath)} 
                 alt={product.name} 
@@ -129,6 +146,32 @@ export default function ProductPage() {
           )}
 
           <div className="muted">{product.description}</div>
+          <div style={{ background: 'rgba(11,18,32,0.45)', border: '1px solid rgba(230,240,255,0.10)', borderRadius: 12, padding: 10, marginTop: 12 }}>
+            { (CATEGORY_FILTERS[product.category] || []).map((filterKey) => {
+                const value = product[filterKey]
+                if (value === null || value === undefined || value === '') return null
+
+                const stringVal = String(value).toLowerCase()
+                const isBoolTrue = value === true || stringVal === 'true'
+                const isBoolFalse = value === false || stringVal === 'false'
+
+                if (isBoolFalse) return null
+
+                if (isBoolTrue) {
+                  return (
+                    <div key={filterKey} style={{ marginBottom: 4, color: 'rgba(230,240,255,0.82)' }}>
+                      <strong style={{ color: '#bfffe0' }}>{FILTER_LABELS[filterKey]}</strong>
+                    </div>
+                  )
+                }
+
+                return (
+                  <div key={filterKey} style={{ marginBottom: 4, color: 'rgba(230,240,255,0.82)' }}>
+                    <strong style={{ color: '#bfffe0' }}>{FILTER_LABELS[filterKey]}:</strong> {String(value)}
+                  </div>
+                )
+            })}
+          </div>
           <div className="muted" style={{ marginTop: 8 }}>
             Stock: {product.stock}
           </div>

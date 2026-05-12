@@ -53,7 +53,7 @@ export default function ProductsPage() {
         <h2>GET /products/details/:id</h2>
         <div className="row">
           <label>Product ID</label>
-          <input value={detailsId} onChange={(e) => setDetailsId(e.target.value)} />
+          <input id="detailsId" name="detailsId" value={detailsId} onChange={(e) => setDetailsId(e.target.value)} />
         </div>
         <div className="actions">
           <button disabled={detailsCall.loading} onClick={() => detailsCall.call(async () => (await api.get(`/products/details/${detailsId}`)).data)}>
@@ -69,23 +69,23 @@ export default function ProductsPage() {
         <div className="hint">Requires admin token.</div>
         <div className="row">
           <label>Name</label>
-          <input value={createBody.name} onChange={(e) => setCreateBody((s) => ({ ...s, name: e.target.value }))} />
+          <input id="createName" name="name" value={createBody.name} onChange={(e) => setCreateBody((s) => ({ ...s, name: e.target.value }))} />
         </div>
         <div className="row">
-          <label>Price</label>
-          <input value={createBody.price} onChange={(e) => setCreateBody((s) => ({ ...s, price: e.target.value }))} />
+          <label htmlFor="createPrice">Price</label>
+          <input id="createPrice" name="price" value={createBody.price} onChange={(e) => setCreateBody((s) => ({ ...s, price: e.target.value }))} />
         </div>
         <div className="row">
-          <label>Description</label>
-          <input value={createBody.description} onChange={(e) => setCreateBody((s) => ({ ...s, description: e.target.value }))} />
+          <label htmlFor="createDescription">Description</label>
+          <input id="createDescription" name="description" value={createBody.description} onChange={(e) => setCreateBody((s) => ({ ...s, description: e.target.value }))} />
         </div>
         <div className="row">
           <label>Stock</label>
-          <input value={createBody.stock} onChange={(e) => setCreateBody((s) => ({ ...s, stock: e.target.value }))} />
+          <input id="createStock" name="stock" value={createBody.stock} onChange={(e) => setCreateBody((s) => ({ ...s, stock: e.target.value }))} />
         </div>
         <div className="row">
-          <label>Category</label>
-          <input value={createBody.category} onChange={(e) => setCreateBody((s) => ({ ...s, category: e.target.value }))} />
+          <label htmlFor="createCategory">Category</label>
+          <input id="createCategory" name="category" value={createBody.category} onChange={(e) => setCreateBody((s) => ({ ...s, category: e.target.value }))} />
         </div>
 
         <div className="actions">
@@ -118,12 +118,12 @@ export default function ProductsPage() {
       <section className="panel">
         <h2>PUT /products/edit/:id (admin)</h2>
         <div className="row">
-          <label>Product ID</label>
-          <input value={editId} onChange={(e) => setEditId(e.target.value)} />
+          <label htmlFor="editId2">Product ID</label>
+          <input id="editId2" name="editId" value={editId} onChange={(e) => setEditId(e.target.value)} />
         </div>
         <div className="row">
-          <label>Body (JSON)</label>
-          <textarea value={editBodyText} onChange={(e) => setEditBodyText(e.target.value)} />
+          <label htmlFor="editBodyText2">Body (JSON)</label>
+          <textarea id="editBodyText2" name="editBodyText" value={editBodyText} onChange={(e) => setEditBodyText(e.target.value)} />
         </div>
         <div className="actions">
           <button
@@ -145,8 +145,8 @@ export default function ProductsPage() {
       <section className="panel">
         <h2>DELETE /products/delete/:id (admin)</h2>
         <div className="row">
-          <label>Product ID</label>
-          <input value={deleteId} onChange={(e) => setDeleteId(e.target.value)} />
+          <label htmlFor="deleteId2">Product ID</label>
+          <input id="deleteId2" name="deleteId" value={deleteId} onChange={(e) => setDeleteId(e.target.value)} />
         </div>
         <div className="actions">
           <button
@@ -165,16 +165,16 @@ export default function ProductsPage() {
         <div className="hint">Requires token + verified email.</div>
 
         <div className="row">
-          <label>Product ID</label>
-          <input value={reviewProductId} onChange={(e) => setReviewProductId(e.target.value)} />
+          <label htmlFor="reviewProductId">Product ID</label>
+          <input id="reviewProductId" name="reviewProductId" value={reviewProductId} onChange={(e) => setReviewProductId(e.target.value)} />
         </div>
         <div className="row">
-          <label>Rating (1-5)</label>
-          <input value={reviewBody.rating} onChange={(e) => setReviewBody((s) => ({ ...s, rating: e.target.value }))} />
+          <label htmlFor="reviewRating">Rating</label>
+          <input id="reviewRating" name="rating" value={reviewBody.rating} onChange={(e) => setReviewBody((s) => ({ ...s, rating: e.target.value }))} />
         </div>
         <div className="row">
-          <label>Comment</label>
-          <input value={reviewBody.comment} onChange={(e) => setReviewBody((s) => ({ ...s, comment: e.target.value }))} />
+          <label htmlFor="reviewComment">Comment</label>
+          <input id="reviewComment" name="comment" value={reviewBody.comment} onChange={(e) => setReviewBody((s) => ({ ...s, comment: e.target.value }))} />
         </div>
 
         <div className="actions">

@@ -125,7 +125,7 @@ export function renderProductForm(formData, setFormData, title, onSubmit, loadin
         <h4>Atribute specifice categoriei: {selectedCategory}</h4>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
           {categoryFilters.map(filterKey => {
-            if (filterKey === 'rackmount' || filterKey === 'weatherproof') {
+            if (filterKey === 'rackmount' || filterKey === 'weatherproof' || filterKey === 'vpnSupport') {
               return (
                 <div key={filterKey} style={{ display: 'flex', alignItems: 'center' }}>
                   <input

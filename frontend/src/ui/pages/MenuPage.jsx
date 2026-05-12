@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, unwrapApiData } from '../../utils/apiClient'
+import { api, unwrapApiData, getImageUrl } from '../../utils/apiClient'
 import { useAuth } from '../../state/auth/AuthContext.jsx'
 import { useCart } from '../../state/cart/CartContext.jsx'
 
@@ -20,6 +20,8 @@ export default function MenuPage() {
   const [error, setError] = useState('')
   const [products, setProducts] = useState([])
 
+  console.log('[MenuPage] Rendered, products count:', products.length, 'products:', products)
+
   const [filters, setFilters] = useState({
     name: '',
     category: '',
@@ -38,6 +40,7 @@ export default function MenuPage() {
   async function loadProducts(nextFilters) {
     setLoading(true)
     setError('')
+    console.log('[MenuPage] loadProducts called with filters:', nextFilters)
     try {
       const f = nextFilters || filters
       const hasAny = Boolean(
@@ -60,9 +63,15 @@ export default function MenuPage() {
           })
         : await api.get('/products/list')
 
+      console.log('[MenuPage] loadProducts raw response:', res)
       const data = unwrapApiData(res)
-      setProducts(Array.isArray(data) ? data : [])
+      console.log('[MenuPage] loadProducts unwrapped data:', data)
+      console.log('[MenuPage] loadProducts isArray:', Array.isArray(data))
+      const finalData = Array.isArray(data) ? data : []
+      console.log('[MenuPage] loadProducts final products to set:', finalData)
+      setProducts(finalData)
     } catch (e) {
+      console.error('[MenuPage] loadProducts error:', e)
       setError(e?.response?.data?.message || e.message || 'Failed to load menu')
     } finally {
       setLoading(false)
@@ -97,6 +106,9 @@ export default function MenuPage() {
   }
 
   function startEdit(product) {
+    console.log('[MenuPage] startEdit called for product:', product.id)
+    console.log('[MenuPage] auth.isAdmin:', auth.isAdmin)
+    console.log('[MenuPage] Setting editingId to:', product.id)
     setEditingId(product.id)
     setEditDraft({
       name: product.name || '',
@@ -107,6 +119,7 @@ export default function MenuPage() {
       image: null,
       imagePreview: product.imagePath || null
     })
+    console.log('[MenuPage] startEdit completed')
   }
 
   function handleEditImageChange(e) {
@@ -134,14 +147,10 @@ export default function MenuPage() {
     reader.readAsDataURL(file)
   }
 
-  function getImageUrl(imagePath) {
-    if (!imagePath) return null
-    if (imagePath.startsWith('http')) return imagePath
-    if (imagePath.startsWith('data:')) return imagePath
-    return `http://localhost:3000${imagePath}`
-  }
-
   async function saveEdit(productId) {
+    console.log('[MenuPage] saveEdit called with productId:', productId)
+    console.log('[MenuPage] auth.token exists:', !!auth.token)
+    
     if (!auth.token) {
       setError('Login as admin to edit products.')
       return
@@ -158,17 +167,36 @@ export default function MenuPage() {
       fd.append('description', String(editDraft.description || '').trim() || '')
       if (editDraft.image) fd.append('image', editDraft.image)
 
+      console.log('[MenuPage] Making PUT request to /products/edit/' + productId)
       const res = await api.put(`/products/edit/${productId}`, fd, {
         headers: { Authorization: `Bearer ${auth.token}` }
       })
+      console.log('[MenuPage] saveEdit raw response:', res)
       const data = unwrapApiData(res)
-      const updated = data?.product || data?.data?.product || null
+      console.log('[MenuPage] saveEdit unwrapped data:', data)
+      let updated = data?.product || data?.data?.product || data
+      console.log('[MenuPage] saveEdit extracted product:', updated)
+      // Support Sequelize instance shape
+      if (updated && updated.dataValues) updated = updated.dataValues
       const updatedProduct = updated || { id: productId }
+      console.log('[MenuPage] saveEdit final updatedProduct:', updatedProduct)
 
-      setProducts((prev) => prev.map((p) => (p.id === productId ? { ...p, ...updatedProduct } : p)))
       setEditingId(null)
+      // Refresh full list from server to ensure we have latest imagePath and all fields
+      try {
+        await loadProducts(filters)
+      } catch (err) {
+        console.error('[MenuPage] loadProducts after edit failed:', err)
+      }
     } catch (e) {
-      setError(e?.response?.data?.message || e.message || 'Failed to update product')
+      console.error('[MenuPage] saveEdit error:', e)
+      const status = e?.response?.status
+      if (status === 401) {
+        await auth.logout()
+        setError('Sesiunea a expirat. Te rog loghează-te din nou ca admin.')
+      } else {
+        setError(e?.response?.data?.message || e.message || 'Failed to update product')
+      }
     } finally {
       setSavingId(null)
     }
@@ -192,7 +220,13 @@ export default function MenuPage() {
       setProducts((prev) => prev.filter((p) => p.id !== productId))
       if (editingId === productId) setEditingId(null)
     } catch (e) {
-      setError(e?.response?.data?.message || e.message || 'Failed to delete product')
+      const status = e?.response?.status
+      if (status === 401) {
+        await auth.logout()
+        setError('Sesiunea a expirat. Te rog loghează-te din nou ca admin.')
+      } else {
+        setError(e?.response?.data?.message || e.message || 'Failed to delete product')
+      }
     } finally {
       setDeletingId(null)
     }
@@ -214,13 +248,13 @@ export default function MenuPage() {
 
         <div className="form" style={{ gridTemplateColumns: '1fr', gap: 10 }}>
           <div className="field">
-            <label>Nume</label>
-            <input className="input" value={filters.name} onChange={(e) => setFilters((s) => ({ ...s, name: e.target.value }))} placeholder="ex: Margherita" />
+            <label htmlFor="filter-name">Nume</label>
+            <input id="filter-name" autoComplete="off" className="input" value={filters.name} onChange={(e) => setFilters((s) => ({ ...s, name: e.target.value }))} placeholder="ex: Margherita" />
           </div>
 
           <div className="field">
-            <label>Categorie</label>
-            <select className="input" value={filters.category} onChange={(e) => setFilters((s) => ({ ...s, category: e.target.value }))}>
+            <label htmlFor="filter-category">Categorie</label>
+            <select id="filter-category" autoComplete="off" className="input" value={filters.category} onChange={(e) => setFilters((s) => ({ ...s, category: e.target.value }))}>
               <option value="">Toate</option>
               {PRODUCT_CATEGORIES.map((c) => (
                 <option key={c} value={c}>
@@ -231,22 +265,22 @@ export default function MenuPage() {
           </div>
 
           <div className="field">
-            <label>Preț minim</label>
-            <input className="input" inputMode="decimal" value={filters.minPrice} onChange={(e) => setFilters((s) => ({ ...s, minPrice: e.target.value }))} placeholder="0" />
+            <label htmlFor="filter-minPrice">Preț minim</label>
+            <input id="filter-minPrice" autoComplete="off" className="input" inputMode="decimal" value={filters.minPrice} onChange={(e) => setFilters((s) => ({ ...s, minPrice: e.target.value }))} placeholder="0" />
           </div>
 
           <div className="field">
-            <label>Preț maxim</label>
-            <input className="input" inputMode="decimal" value={filters.maxPrice} onChange={(e) => setFilters((s) => ({ ...s, maxPrice: e.target.value }))} placeholder="200" />
+            <label htmlFor="filter-maxPrice">Preț maxim</label>
+            <input id="filter-maxPrice" autoComplete="off" className="input" inputMode="decimal" value={filters.maxPrice} onChange={(e) => setFilters((s) => ({ ...s, maxPrice: e.target.value }))} placeholder="200" />
           </div>
 
           <div className="field">
-            <label>
+            <label htmlFor="filter-inStock" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <input
+                id="filter-inStock"
                 type="checkbox"
                 checked={filters.inStock}
                 onChange={(e) => setFilters((s) => ({ ...s, inStock: e.target.checked }))}
-                style={{ marginRight: 8 }}
               />
               Doar în stoc
             </label>
@@ -289,6 +323,7 @@ export default function MenuPage() {
 
               {p.imagePath && (
                 <div style={{ marginBottom: 10, textAlign: 'center' }}>
+                  {console.log('[MenuPage render] Product image:', { id: p.id, name: p.name, imagePath: p.imagePath, imageUrl: getImageUrl(p.imagePath) })}
                   <img 
                     src={getImageUrl(p.imagePath)}
                     alt={p.name}
@@ -331,23 +366,23 @@ export default function MenuPage() {
                   <div className="cardTitle">Editează produs</div>
                   <div className="form" style={{ marginTop: 10 }}>
                     <div className="field">
-                      <label>Nume</label>
-                      <input className="input" value={editDraft.name} onChange={(e) => setEditDraft((s) => ({ ...s, name: e.target.value }))} />
+                      <label htmlFor={`edit-name-${p.id}`}>Nume</label>
+                      <input id={`edit-name-${p.id}`} autoComplete="off" className="input" value={editDraft.name} onChange={(e) => setEditDraft((s) => ({ ...s, name: e.target.value }))} />
                     </div>
 
                     <div className="field">
-                      <label>Preț</label>
-                      <input className="input" inputMode="decimal" value={editDraft.price} onChange={(e) => setEditDraft((s) => ({ ...s, price: e.target.value }))} />
+                      <label htmlFor={`edit-price-${p.id}`}>Preț</label>
+                      <input id={`edit-price-${p.id}`} autoComplete="off" className="input" inputMode="decimal" value={editDraft.price} onChange={(e) => setEditDraft((s) => ({ ...s, price: e.target.value }))} />
                     </div>
 
                     <div className="field">
-                      <label>Stoc</label>
-                      <input className="input" inputMode="numeric" value={editDraft.stock} onChange={(e) => setEditDraft((s) => ({ ...s, stock: e.target.value }))} />
+                      <label htmlFor={`edit-stock-${p.id}`}>Stoc</label>
+                      <input id={`edit-stock-${p.id}`} autoComplete="off" className="input" inputMode="numeric" value={editDraft.stock} onChange={(e) => setEditDraft((s) => ({ ...s, stock: e.target.value }))} />
                     </div>
 
                     <div className="field">
-                      <label>Categorie</label>
-                      <select className="input" value={editDraft.category} onChange={(e) => setEditDraft((s) => ({ ...s, category: e.target.value }))}>
+                      <label htmlFor={`edit-category-${p.id}`}>Categorie</label>
+                      <select id={`edit-category-${p.id}`} autoComplete="off" className="input" value={editDraft.category} onChange={(e) => setEditDraft((s) => ({ ...s, category: e.target.value }))}>
                         {PRODUCT_CATEGORIES.map((c) => (
                           <option key={c} value={c}>
                             {c}
@@ -357,13 +392,13 @@ export default function MenuPage() {
                     </div>
 
                     <div className="field">
-                      <label>Descriere</label>
-                      <textarea className="textarea" value={editDraft.description} onChange={(e) => setEditDraft((s) => ({ ...s, description: e.target.value }))} />
+                      <label htmlFor={`edit-description-${p.id}`}>Descriere</label>
+                      <textarea id={`edit-description-${p.id}`} autoComplete="off" className="textarea" value={editDraft.description} onChange={(e) => setEditDraft((s) => ({ ...s, description: e.target.value }))} />
                     </div>
 
                     <div className="field">
-                      <label>Imagine (JPG, PNG, GIF, WebP - max 5MB)</label>
-                      <input className="input" type="file" accept="image/*" onChange={handleEditImageChange} />
+                      <label htmlFor={`edit-image-${p.id}`}>Imagine (JPG, PNG, GIF, WebP - max 5MB)</label>
+                      <input id={`edit-image-${p.id}`} className="input" type="file" autoComplete="off" accept="image/*" onChange={handleEditImageChange} />
                       {editDraft.imagePreview && (
                         <div style={{ marginTop: 10 }}>
                           <img 

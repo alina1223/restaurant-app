@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, unwrapApiData } from '../../utils/apiClient'
+import { api, unwrapApiData, getImageUrl } from '../../utils/apiClient'
 import { useAuth } from '../../state/auth/AuthContext.jsx'
 import { useCart } from '../../state/cart/CartContext.jsx'
 
@@ -170,6 +170,8 @@ export default function CatalogPage() {
       for (const [key, value] of Object.entries(editDraft)) {
         if (key === 'imagePreview') continue
         if (value === null || value === undefined) continue
+        // don't overwrite with empty strings
+        if (typeof value === 'string' && value.trim() === '') continue
         formData.append(key, value)
       }
 
@@ -177,14 +179,18 @@ export default function CatalogPage() {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
 
-      const updated = unwrapApiData(response)
+      const payload = unwrapApiData(response)
+      const updated = payload?.product || payload?.data || payload
       setProducts((prev) => prev.map((p) => (p.id === productId ? updated : p)))
 
       setEditingId(null)
       setEditDraft({})
       alert('Produs actualizat')
     } catch (e) {
-      alert('Eroare: ' + (e.message || 'Necunoscut'))
+      const serverMsg = e?.response?.data?.message
+      const serverErrors = e?.response?.data?.errors
+      const extra = serverErrors ? `\n${JSON.stringify(serverErrors)}` : ''
+      alert('Eroare: ' + (serverMsg || e?.message || 'Necunoscut') + extra)
     } finally {
       setSavingId(null)
     }
@@ -219,7 +225,7 @@ export default function CatalogPage() {
       vpn: product.vpn || '',
       rackmount: product.rackmount || false,
       wifiStandard: product.wifiStandard || '',
-      vpnSupport: product.vpnSupport || '',
+      vpnSupport: product.vpnSupport || false,
       resolution: product.resolution || '',
       connectivity: product.connectivity || '',
       weatherproof: product.weatherproof || false,
@@ -303,23 +309,24 @@ export default function CatalogPage() {
 
         <div className="form" style={{ marginTop: 14, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
           <div className="field">
-            <label>Căutare după nume</label>
-            <input className="input" type="text" name="name" placeholder="Căutare..." value={filters.name} onChange={handleFilterChange} />
+            <label htmlFor="catalog-filter-name">Căutare după nume</label>
+            <input id="catalog-filter-name" autoComplete="off" className="input" type="text" name="name" placeholder="Căutare..." value={filters.name} onChange={handleFilterChange} />
           </div>
 
           <div className="field">
-            <label>Preț minim (MDL)</label>
-            <input className="input" type="number" name="minPrice" placeholder="0" value={filters.minPrice} onChange={handleFilterChange} />
+            <label htmlFor="catalog-filter-minPrice">Preț minim (MDL)</label>
+            <input id="catalog-filter-minPrice" autoComplete="off" className="input" type="number" name="minPrice" placeholder="0" value={filters.minPrice} onChange={handleFilterChange} />
           </div>
 
           <div className="field">
-            <label>Preț maxim (MDL)</label>
-            <input className="input" type="number" name="maxPrice" placeholder="10000" value={filters.maxPrice} onChange={handleFilterChange} />
+            <label htmlFor="catalog-filter-maxPrice">Preț maxim (MDL)</label>
+            <input id="catalog-filter-maxPrice" autoComplete="off" className="input" type="number" name="maxPrice" placeholder="10000" value={filters.maxPrice} onChange={handleFilterChange} />
           </div>
 
           <div className="field">
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <label htmlFor="catalog-filter-inStock" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <input
+                id="catalog-filter-inStock"
                 type="checkbox"
                 name="inStock"
                 checked={filters.inStock}
@@ -330,11 +337,12 @@ export default function CatalogPage() {
           </div>
 
           {currentCategoryFilters.map((filterKey) => {
-            if (filterKey === 'rackmount' || filterKey === 'weatherproof') {
+            if (filterKey === 'rackmount' || filterKey === 'weatherproof' || filterKey === 'vpnSupport') {
               return (
-                <div key={filterKey} className="field">
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div key={`${selectedCategory}-${filterKey}`} className="field">
+                  <label htmlFor={`filter-${filterKey}`} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <input
+                      id={`filter-${filterKey}`}
                       type="checkbox"
                       name={filterKey}
                       checked={Boolean(specificFilters[filterKey])}
@@ -350,8 +358,10 @@ export default function CatalogPage() {
 
             return (
               <div key={filterKey} className="field">
-                <label>{FILTER_LABELS[filterKey]}</label>
+                <label htmlFor={`select-${filterKey}`}>{FILTER_LABELS[filterKey]}</label>
                 <select
+                  id={`select-${filterKey}`}
+                  autoComplete="off"
                   className="input"
                   name={filterKey}
                   value={specificFilters[filterKey] || ''}
@@ -359,7 +369,7 @@ export default function CatalogPage() {
                 >
                   <option value="">Toate</option>
                   {uniqueValues.map((val) => (
-                    <option key={val} value={val}>
+                    <option key={`${filterKey}-${val}`} value={val}>
                       {val}
                     </option>
                   ))}
@@ -378,7 +388,7 @@ export default function CatalogPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
           {products.map((product) => (
             <div
-              key={product.id}
+              key={product.id || `prod-${Math.random().toString(36).slice(2,7)}`}
               className="card"
               style={{ overflow: 'hidden', borderRadius: 16, border: '1px solid rgba(230,240,255,0.12)' }}
             >
@@ -390,31 +400,31 @@ export default function CatalogPage() {
 
                   <div className="form" style={{ gridTemplateColumns: '1fr', gap: 10 }}>
                     <div className="field">
-                      <label>Nume</label>
-                      <input className="input" type="text" name="name" value={editDraft.name} onChange={handleEditFieldChange} />
+                      <label htmlFor={`catalog-edit-name-${product.id}`}>Nume</label>
+                      <input id={`catalog-edit-name-${product.id}`} autoComplete="off" className="input" type="text" name="name" value={editDraft.name} onChange={handleEditFieldChange} />
                     </div>
 
                     <div className="field">
-                      <label>Preț</label>
-                      <input className="input" type="number" name="price" value={editDraft.price} onChange={handleEditFieldChange} />
+                      <label htmlFor={`catalog-edit-price-${product.id}`}>Preț</label>
+                      <input id={`catalog-edit-price-${product.id}`} autoComplete="off" className="input" type="number" name="price" value={editDraft.price} onChange={handleEditFieldChange} />
                     </div>
 
                     <div className="field">
-                      <label>Stoc</label>
-                      <input className="input" type="number" name="stock" value={editDraft.stock} onChange={handleEditFieldChange} />
+                      <label htmlFor={`catalog-edit-stock-${product.id}`}>Stoc</label>
+                      <input id={`catalog-edit-stock-${product.id}`} autoComplete="off" className="input" type="number" name="stock" value={editDraft.stock} onChange={handleEditFieldChange} />
                     </div>
 
                     <div className="field">
-                      <label>Descriere</label>
-                      <textarea className="textarea" name="description" value={editDraft.description} onChange={handleEditFieldChange} />
+                      <label htmlFor={`catalog-edit-description-${product.id}`}>Descriere</label>
+                      <textarea id={`catalog-edit-description-${product.id}`} autoComplete="off" className="textarea" name="description" value={editDraft.description} onChange={handleEditFieldChange} />
                     </div>
 
                     {currentCategoryFilters.map((filterKey) => {
-                      if (filterKey === 'rackmount' || filterKey === 'weatherproof') {
+                      if (filterKey === 'rackmount' || filterKey === 'weatherproof' || filterKey === 'vpnSupport') {
                         return (
                           <div key={filterKey} className="field">
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                              <input type="checkbox" name={filterKey} checked={Boolean(editDraft[filterKey])} onChange={handleEditFieldChange} />
+                            <label htmlFor={`edit-checkbox-${product.id}-${filterKey}`} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <input id={`edit-checkbox-${product.id}-${filterKey}`} type="checkbox" name={filterKey} checked={Boolean(editDraft[filterKey])} onChange={handleEditFieldChange} />
                               {FILTER_LABELS[filterKey]}
                             </label>
                           </div>
@@ -424,23 +434,23 @@ export default function CatalogPage() {
                       if (filterKey === 'bays') {
                         return (
                           <div key={filterKey} className="field">
-                            <label>{FILTER_LABELS[filterKey]}</label>
-                            <input className="input" type="number" name={filterKey} value={editDraft[filterKey] || ''} onChange={handleEditFieldChange} />
+                            <label htmlFor={`edit-bays-${product.id}-${filterKey}`}>{FILTER_LABELS[filterKey]}</label>
+                            <input id={`edit-bays-${product.id}-${filterKey}`} autoComplete="off" className="input" type="number" name={filterKey} value={editDraft[filterKey] || ''} onChange={handleEditFieldChange} />
                           </div>
                         )
                       }
 
                       return (
                         <div key={filterKey} className="field">
-                          <label>{FILTER_LABELS[filterKey]}</label>
-                          <input className="input" type="text" name={filterKey} value={editDraft[filterKey] || ''} onChange={handleEditFieldChange} />
+                          <label htmlFor={`edit-attr-${product.id}-${filterKey}`}>{FILTER_LABELS[filterKey]}</label>
+                          <input id={`edit-attr-${product.id}-${filterKey}`} autoComplete="off" className="input" type="text" name={filterKey} value={editDraft[filterKey] || ''} onChange={handleEditFieldChange} />
                         </div>
                       )
                     })}
 
                     <div className="field">
-                      <label>Imagine</label>
-                      <input type="file" accept="image/*" onChange={handleImageChange} className="input" />
+                      <label htmlFor={`catalog-edit-image-${product.id}`}>Imagine</label>
+                      <input id={`catalog-edit-image-${product.id}`} autoComplete="off" type="file" accept="image/*" onChange={handleImageChange} className="input" />
                       {editDraft.imagePreview && (
                         <img
                           src={editDraft.imagePreview}
@@ -464,7 +474,7 @@ export default function CatalogPage() {
                 <>
                   {product.imagePath && (
                     <img
-                      src={product.imagePath}
+                      src={getImageUrl(product.imagePath)}
                       alt={product.name}
                       style={{ width: '100%', height: 190, objectFit: 'cover', borderBottom: '1px solid rgba(230,240,255,0.10)' }}
                     />
@@ -483,14 +493,27 @@ export default function CatalogPage() {
                     <div style={{ background: 'rgba(11,18,32,0.45)', border: '1px solid rgba(230,240,255,0.10)', borderRadius: 12, padding: 10, marginBottom: 10 }}>
                       {currentCategoryFilters.map((filterKey) => {
                         const value = product[filterKey]
-                        if (value !== null && value !== undefined && value !== '' && value !== false) {
+                        if (value === null || value === undefined || value === '' ) return null
+
+                        const stringVal = String(value).toLowerCase()
+                        const isBoolTrue = value === true || stringVal === 'true'
+                        const isBoolFalse = value === false || stringVal === 'false'
+
+                        if (isBoolFalse) return null
+
+                        if (isBoolTrue) {
                           return (
-                            <div key={filterKey} style={{ marginBottom: 4, color: 'rgba(230,240,255,0.82)' }}>
-                              <strong style={{ color: '#bfffe0' }}>{FILTER_LABELS[filterKey]}:</strong> {String(value)}
+                            <div key={`${product.id}-${filterKey}`} style={{ marginBottom: 4, color: 'rgba(230,240,255,0.82)' }}>
+                              <strong style={{ color: '#bfffe0' }}>{FILTER_LABELS[filterKey]}</strong>
                             </div>
                           )
                         }
-                        return null
+
+                        return (
+                          <div key={`${product.id}-${filterKey}`} style={{ marginBottom: 4, color: 'rgba(230,240,255,0.82)' }}>
+                            <strong style={{ color: '#bfffe0' }}>{FILTER_LABELS[filterKey]}:</strong> {String(value)}
+                          </div>
+                        )
                       })}
                     </div>
 

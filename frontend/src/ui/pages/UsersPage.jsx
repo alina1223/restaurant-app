@@ -59,8 +59,8 @@ export default function UsersPage() {
         <h2>POST /users/create</h2>
         <div className="hint">Backwards-compatible user creation (sends verification email).</div>
         <div className="row">
-          <label>Body (JSON)</label>
-          <textarea value={createBodyText} onChange={(e) => setCreateBodyText(e.target.value)} />
+          <label htmlFor="createBodyText">Body (JSON)</label>
+          <textarea id="createBodyText" name="createBodyText" value={createBodyText} onChange={(e) => setCreateBodyText(e.target.value)} />
         </div>
         <div className="actions">
           <button
@@ -82,12 +82,12 @@ export default function UsersPage() {
       <section className="panel">
         <h2>PUT /users/edit/:id</h2>
         <div className="row">
-          <label>User ID</label>
-          <input value={editId} onChange={(e) => setEditId(e.target.value)} />
+          <label htmlFor="editId">User ID</label>
+          <input id="editId" name="editId" value={editId} onChange={(e) => setEditId(e.target.value)} />
         </div>
         <div className="row">
-          <label>Body (JSON)</label>
-          <textarea value={editBodyText} onChange={(e) => setEditBodyText(e.target.value)} />
+          <label htmlFor="editBodyText">Body (JSON)</label>
+          <textarea id="editBodyText" name="editBodyText" value={editBodyText} onChange={(e) => setEditBodyText(e.target.value)} />
         </div>
         <div className="actions">
           <button
@@ -109,12 +109,12 @@ export default function UsersPage() {
       <section className="panel">
         <h2>PATCH /users/update/:id</h2>
         <div className="row">
-          <label>User ID</label>
-          <input value={patchId} onChange={(e) => setPatchId(e.target.value)} />
+          <label htmlFor="patchId">User ID</label>
+          <input id="patchId" name="patchId" value={patchId} onChange={(e) => setPatchId(e.target.value)} />
         </div>
         <div className="row">
-          <label>Body (JSON)</label>
-          <textarea value={patchBodyText} onChange={(e) => setPatchBodyText(e.target.value)} />
+          <label htmlFor="patchBodyText">Body (JSON)</label>
+          <textarea id="patchBodyText" name="patchBodyText" value={patchBodyText} onChange={(e) => setPatchBodyText(e.target.value)} />
         </div>
         <div className="actions">
           <button
@@ -137,8 +137,8 @@ export default function UsersPage() {
         <h2>DELETE /users/delete/:id</h2>
         <div className="hint">This endpoint uses legacy headers role/currentuserid for permission checks.</div>
         <div className="row">
-          <label>User ID</label>
-          <input value={deleteId} onChange={(e) => setDeleteId(e.target.value)} />
+          <label htmlFor="deleteId">User ID</label>
+          <input id="deleteId" name="deleteId" value={deleteId} onChange={(e) => setDeleteId(e.target.value)} />
         </div>
         <div className="actions">
           <button disabled={deleteCall.loading} onClick={() => deleteCall.call(async () => (await api.delete(`/users/delete/${deleteId}`)).data)}>
@@ -152,8 +152,8 @@ export default function UsersPage() {
       <section className="panel">
         <h2>GET /users/profile/:id (auth)</h2>
         <div className="row">
-          <label>User ID</label>
-          <input value={profileId} onChange={(e) => setProfileId(e.target.value)} />
+          <label htmlFor="profileId">User ID</label>
+          <input id="profileId" name="profileId" value={profileId} onChange={(e) => setProfileId(e.target.value)} />
         </div>
         <div className="actions">
           <button
@@ -183,15 +183,15 @@ export default function UsersPage() {
         <h2>GET /users/search (admin)</h2>
         <div className="row">
           <label>Name</label>
-          <input value={searchParams.name} onChange={(e) => setSearchParams((s) => ({ ...s, name: e.target.value }))} />
+          <input id="search-name" name="name" value={searchParams.name} onChange={(e) => setSearchParams((s) => ({ ...s, name: e.target.value }))} />
         </div>
         <div className="row">
-          <label>Email</label>
-          <input value={searchParams.email} onChange={(e) => setSearchParams((s) => ({ ...s, email: e.target.value }))} />
+          <label htmlFor="search-email">Email</label>
+          <input id="search-email" name="email" value={searchParams.email} onChange={(e) => setSearchParams((s) => ({ ...s, email: e.target.value }))} />
         </div>
         <div className="row">
-          <label>Role</label>
-          <input value={searchParams.role} onChange={(e) => setSearchParams((s) => ({ ...s, role: e.target.value }))} />
+          <label htmlFor="search-role">Role</label>
+          <input id="search-role" name="role" value={searchParams.role} onChange={(e) => setSearchParams((s) => ({ ...s, role: e.target.value }))} />
         </div>
         <div className="actions">
           <button
@@ -216,16 +216,16 @@ export default function UsersPage() {
       <section className="panel">
         <h2>PUT /users/change-password/:id (auth)</h2>
         <div className="row">
-          <label>User ID</label>
-          <input value={changePasswordId} onChange={(e) => setChangePasswordId(e.target.value)} />
+          <label htmlFor="changePasswordId">User ID</label>
+          <input id="changePasswordId" name="changePasswordId" value={changePasswordId} onChange={(e) => setChangePasswordId(e.target.value)} />
         </div>
         <div className="row">
-          <label>Current Password (required for non-admin)</label>
-          <input type="password" value={changePasswordBody.currentPassword} onChange={(e) => setChangePasswordBody((s) => ({ ...s, currentPassword: e.target.value }))} />
+          <label htmlFor="currentPassword">Current Password (required for non-admin)</label>
+          <input id="currentPassword" name="currentPassword" type="password" value={changePasswordBody.currentPassword} onChange={(e) => setChangePasswordBody((s) => ({ ...s, currentPassword: e.target.value }))} />
         </div>
         <div className="row">
-          <label>New Password</label>
-          <input type="password" value={changePasswordBody.newPassword} onChange={(e) => setChangePasswordBody((s) => ({ ...s, newPassword: e.target.value }))} />
+          <label htmlFor="newPassword">New Password</label>
+          <input id="newPassword" name="newPassword" type="password" value={changePasswordBody.newPassword} onChange={(e) => setChangePasswordBody((s) => ({ ...s, newPassword: e.target.value }))} />
         </div>
         <div className="actions">
           <button
@@ -257,11 +257,11 @@ export default function UsersPage() {
         <div className="hint">Requires token + verified email.</div>
         <div className="row">
           <label>Product ID</label>
-          <input value={cartBody.productId} onChange={(e) => setCartBody((s) => ({ ...s, productId: e.target.value }))} />
+          <input id="productId" name="productId" value={cartBody.productId} onChange={(e) => setCartBody((s) => ({ ...s, productId: e.target.value }))} />
         </div>
         <div className="row">
-          <label>Quantity</label>
-          <input value={cartBody.quantity} onChange={(e) => setCartBody((s) => ({ ...s, quantity: e.target.value }))} />
+          <label htmlFor="quantity">Quantity</label>
+          <input id="quantity" name="quantity" value={cartBody.quantity} onChange={(e) => setCartBody((s) => ({ ...s, quantity: e.target.value }))} />
         </div>
         <div className="actions">
           <button

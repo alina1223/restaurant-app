@@ -98,7 +98,7 @@ export default function AdminPage() {
     vpn: '',
     rackmount: false,
     wifiStandard: '',
-    vpnSupport: '',
+    vpnSupport: false,
     resolution: '',
     connectivity: '',
     weatherproof: false,
@@ -122,7 +122,7 @@ export default function AdminPage() {
     vpn: '',
     rackmount: false,
     wifiStandard: '',
-    vpnSupport: '',
+    vpnSupport: false,
     resolution: '',
     connectivity: '',
     weatherproof: false,
@@ -146,7 +146,7 @@ export default function AdminPage() {
     vpn: '',
     rackmount: false,
     wifiStandard: '',
-    vpnSupport: '',
+    vpnSupport: false,
     resolution: '',
     connectivity: '',
     weatherproof: false,
@@ -216,7 +216,7 @@ export default function AdminPage() {
     if (requireAll || fields.vpn !== '') body.vpn = String(fields.vpn || '').trim()
     if (requireAll || fields.rackmount !== undefined) body.rackmount = fields.rackmount
     if (requireAll || fields.wifiStandard !== '') body.wifiStandard = String(fields.wifiStandard || '').trim()
-    if (requireAll || fields.vpnSupport !== '') body.vpnSupport = String(fields.vpnSupport || '').trim()
+    if (requireAll || fields.vpnSupport !== undefined) body.vpnSupport = Boolean(fields.vpnSupport)
     if (requireAll || fields.resolution !== '') body.resolution = String(fields.resolution || '').trim()
     if (requireAll || fields.connectivity !== '') body.connectivity = String(fields.connectivity || '').trim()
     if (requireAll || fields.weatherproof !== undefined) body.weatherproof = fields.weatherproof

@@ -24,7 +24,9 @@ module.exports = (req, res, next) => {
    
     if (data && typeof data === 'object' && 'data' in data) {
       formattedResponse.data = data.data;
-    } else if (Array.isArray(data) || (data && typeof data !== 'object')) {
+    } else if (Array.isArray(data)) {
+      formattedResponse.data = data;
+    } else if (data && typeof data !== 'object') {
       formattedResponse.data = data;
     } else if (data && typeof data === 'object') {
       const { message, error, errors, details, ...rest } = data;
